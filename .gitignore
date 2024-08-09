@@ -1,0 +1,16 @@
+# Editors
+.vs
+.vscode
+.idea
+
+# Debug Logs
+debug.log
+
+# Binaries
+/bin
+*.bin
+*.exe
+
+# Assets
+assets/*
+!assets/.gitkeep
