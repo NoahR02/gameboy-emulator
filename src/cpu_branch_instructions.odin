@@ -114,7 +114,7 @@ cpu_ret_on_condition :: proc(cpu: ^Cpu, opcode: u8)  {
 
 cpu_rst :: proc(cpu: ^Cpu, opcode: u8)  {
     // Map t to 1 of 8 addresses
-    t := extract_middle_bits(opcode)
+    t := extract_bits_5_4_3(opcode)
     P := t * 8
     pc := Register(u16(cpu.registers.PC))
     memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 1, pc.high)

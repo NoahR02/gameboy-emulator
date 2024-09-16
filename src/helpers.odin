@@ -25,14 +25,14 @@ extract_rightmost_3_bits :: proc(opcode: u8) -> u8 {
     return src_register
 }
 
-extract_middle_bits :: proc(opcode: u8) -> u8 {
+extract_bits_5_4_3 :: proc(opcode: u8) -> u8 {
     dst_mask := byte(0b00111000)
 
     dst_register := (opcode & dst_mask) >> 3
     return dst_register
 }
 
-extract_middle_2_bits :: proc(opcode: u8) -> u8 {
+extract_bits_5_4 :: proc(opcode: u8) -> u8 {
     dst_mask := byte(0b00110000)
 
     dst_register := (opcode & dst_mask) >> 4

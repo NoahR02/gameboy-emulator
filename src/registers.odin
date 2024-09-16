@@ -36,8 +36,8 @@ OPCODE_REGISTER_PAIR_HL_INDEX :: 2
 OPCODE_REGISTER_PAIR_SP_INDEX :: 3
 
 extract_src_register :: extract_rightmost_3_bits
-extract_dst_register :: extract_middle_bits
-extract_dst_register_pair :: extract_middle_2_bits
+extract_dst_register :: extract_bits_5_4_3
+extract_dst_register_pair :: extract_bits_5_4
 
 set_register_value_from_opcode_index :: proc(registers: ^Registers, opcode_index: u8, value: u8) {
     switch opcode_index {
