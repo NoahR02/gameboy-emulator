@@ -1,7 +1,7 @@
 # odin-gameboy
 
 - [x] CPU
-  - [x] Successfully passes all Blargg CPU tests.
+  - [x] Successfully passes all of Blargg's CPU tests
 - [x] Timer
 - [x] Interrupt Controller
 - [x] RAM
