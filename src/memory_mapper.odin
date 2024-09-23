@@ -22,14 +22,8 @@ Memory_Mapper :: struct {
     _work_ram:      [8 * KILOBYTE]byte,  // 0x2000
 	_io_ram:        [256]byte,
 	_high_ram:      [128]byte,
-    cpu: ^Cpu,
+    gb_state: ^Gb_State,
 }
-
-// ----
-// LY
-STAT :: 0xFF41
-LY :: 0xFF44
-LYC :: 0xFF45
 
 memory_mapper_read :: proc(memory_mapper: Memory_Mapper, address: u16) -> u8 {
 
@@ -72,6 +66,11 @@ memory_mapper_read :: proc(memory_mapper: Memory_Mapper, address: u16) -> u8 {
 }
 
 memory_mapper_write :: proc(memory_mapper: ^Memory_Mapper, address: u16, data: u8) {
+
+ /*   if address == LY || address == LYC {
+        lcd_write(memory_mapper.gb_state, address, data)
+        return;
+    }*/
 
     switch {
         case address < 0x8000:

@@ -14,7 +14,7 @@ cpu_fetch_decode_execute :: proc(gb_state: ^Gb_State) {
 
     m_cycles: u8 = 0
     opcode := memory_mapper_read(gb_state.memory_mapper, u16(gb_state.cpu.registers.PC))
-    //fmt.printf("RUNNING OPCODE: %s at %s \n", format_8_bit_number(opcode), format_address([]byte{gb_state.cpu.registers.PC.low, gb_state.cpu.registers.PC.high}))
+    // fmt.printf("RUNNING OPCODE: %s at %s \n", format_8_bit_number(opcode), format_address([]byte{gb_state.cpu.registers.PC.low, gb_state.cpu.registers.PC.high}))
     gb_state.cpu.registers.PC = Register(u16(gb_state.cpu.registers.PC) + 1)
 
     opcode_length := OPCODE_LENGTH_TABLE[opcode]
