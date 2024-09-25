@@ -7,11 +7,10 @@ import "core:encoding/endian"
 Gb_State :: struct {
     cpu: Cpu,
     ppu: Ppu,
+    timer: Timer,
     memory_mapper: Memory_Mapper,
     current_cycle: int,
     is_halted: bool,
-    timer_counter_delta: int,
-    timer_divider_delta: int,
 }
 
 import "core:log"
@@ -68,39 +67,27 @@ gameboy_step :: proc(gb_state: ^Gb_State) {
 
     interrupt_controller_handle_interrupts(gb_state)
 
-    cycle_count_delta := gb_state.current_cycle - old_cycle_count
-    gb_state.ppu.cycles += uint(cycle_count_delta)
+    m_cycles_delta := uint(gb_state.current_cycle - old_cycle_count)
+    gb_state.ppu.cycles += uint(m_cycles_delta)
     ppu_step(&gb_state.ppu)
 
-    gb_state.timer_divider_delta += cycle_count_delta
-    gb_state.timer_counter_delta += cycle_count_delta
+    timer_divider_step(&gb_state.timer, m_cycles_delta)
+    timer_counter_step(&gb_state.timer, m_cycles_delta)
+}
 
-    // Increment the timer divier counter every 64 memory cycles.
-    if gb_state.timer_divider_delta >= 64 {
-        timer_increment_divider(gb_state)
-        gb_state.timer_divider_delta = 0
-    }
-
-    if timer_counter_is_running(gb_state^) {
-        // Increment the timer divier counter every n memory cycles.
-        // n is variable because the timer counter can increment at different frequencies.
-        increment_on_n_m_cycles := int(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / timer_get_clock_frequency(gb_state^))
-        if gb_state.timer_counter_delta >= increment_on_n_m_cycles {
-            timer_increment_counter(gb_state)
-            gb_state.timer_counter_delta = 0
-        }
-    } else {
-        gb_state.timer_counter_delta = 0
-    }
+connect_devices :: proc(gb_state: ^Gb_State) {
+    // This is a bit nasty because it will create circular references, but most of the time each device cannot operate in isolation.
+    // TODO: Rework how the devices communicate.
+    gb_state.cpu.memory_mapper = &gb_state.memory_mapper
+    gb_state.ppu.gb_state = gb_state
+    gb_state.memory_mapper.gb_state = gb_state
+    gb_state.timer.gb_state = gb_state
 }
 
 main :: proc() {
      gb_state := Gb_State {}
-     gb_state.cpu.memory_mapper = &gb_state.memory_mapper
-     gb_state.ppu.gb_state = &gb_state
-     gb_state.memory_mapper.gb_state = &gb_state
+     connect_devices(&gb_state)
 
-     // rom := #load("../tests/cpu_instrs/02-interrupts.gb")
      rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
      if !rom_open_success {
          panic("Failed to open the rom file!")
@@ -113,9 +100,8 @@ main :: proc() {
      defer glfw.Terminate()
 
      glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3)
-     glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 2)
+     glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3)
      glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-     glfw.WindowHint(glfw.OPENGL_FORWARD_COMPAT, 1) // i32(true)
 
      window := glfw.CreateWindow(1280, 720, "yuki gb", nil, nil)
      assert(window != nil)
@@ -146,7 +132,7 @@ main :: proc() {
 
      imgui_impl_glfw.InitForOpenGL(window, true)
      defer imgui_impl_glfw.Shutdown()
-     imgui_impl_opengl3.Init("#version 150")
+     imgui_impl_opengl3.Init("#version 330 core")
      defer imgui_impl_opengl3.Shutdown()
 
      tile_data := make([]u8, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * 4)
@@ -156,7 +142,8 @@ main :: proc() {
 
      tile_map_tab_open := true
      background_tab_open := true
-     texture := load_texture_from_memory(tile_data, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT)
+     texture := texture_make()
+     defer texture_destroy(&texture)
 
      for !glfw.WindowShouldClose(window) {
          glfw.PollEvents()
@@ -164,28 +151,28 @@ main :: proc() {
          for _ in 0..=offset {
              gameboy_step(&gb_state)
          }
-         ppu_decode_and_render_tile_data(&gb_state, tile_data, 16)
-         update_texture(texture, tile_data, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT)
+         ppu_decode_and_render_tile_data(&gb_state.ppu, tile_data, 16)
+         texture_update(&texture, tile_data, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT)
 
          imgui_impl_opengl3.NewFrame()
          imgui_impl_glfw.NewFrame()
          im.NewFrame()
 
-         im.BeginTabBar(cstring("tab_bar"), {})
-         if im.BeginTabItem("tile_map", &tile_map_tab_open, {}) {
-             im.Image(rawptr(uintptr(texture)), im.Vec2{GAMEBOY_SCREEN_WIDTH * 4, GAMEBOY_SCREEN_HEIGHT * 4})
+         im.BeginTabBar(cstring("Debug Tab Container"), {})
+         if im.BeginTabItem("Tile Map", &tile_map_tab_open, {}) {
+             im.Image(rawptr(uintptr(texture.handle)), im.Vec2{GAMEBOY_SCREEN_WIDTH * 4, GAMEBOY_SCREEN_HEIGHT * 4})
              im.EndTabItem()
          }
 
-         if im.BeginTabItem("background", &background_tab_open, {}) {
-             im.Image(rawptr(uintptr(texture)), im.Vec2{GAMEBOY_SCREEN_WIDTH * 4, GAMEBOY_SCREEN_HEIGHT * 4})
+         if im.BeginTabItem("Background Layer", &background_tab_open, {}) {
+             im.Image(rawptr(uintptr(texture.handle)), im.Vec2{GAMEBOY_SCREEN_WIDTH * 2, GAMEBOY_SCREEN_HEIGHT * 2})
              im.EndTabItem()
          }
          im.EndTabBar()
 
          im.Render()
-         display_w, display_h := glfw.GetFramebufferSize(window)
-         gl.Viewport(0, 0, display_w, display_h)
+         window_width, window_height := glfw.GetFramebufferSize(window)
+         gl.Viewport(0, 0, window_width, window_height)
          gl.ClearColor(0, 0, 0, 1)
          gl.Clear(gl.COLOR_BUFFER_BIT)
          imgui_impl_opengl3.RenderDrawData(im.GetDrawData())

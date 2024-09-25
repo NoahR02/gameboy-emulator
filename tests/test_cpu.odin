@@ -28,8 +28,7 @@ test_cpu :: proc(t: ^testing.T) {
     for test in tests {
         using gameboy
         gb_state := Gb_State {}
-        gb_state.cpu.memory_mapper = &gb_state.memory_mapper
-        gb_state.memory_mapper.cpu = &gb_state.cpu
+        connect_devices(&gb_state)
         
         rom, rom_read_success := os.read_entire_file(test)
         if !rom_read_success {

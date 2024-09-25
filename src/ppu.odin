@@ -126,33 +126,52 @@ ppu_get_tile_data :: proc(ppu: ^Ppu, tile_number: u16) -> (tile_data: [8 * 8 * 4
     return
 }
 
-ppu_decode_and_render_tile_data :: proc(gb_state: ^Gb_State, tile_framebuffer: []u8, tiles_per_row: u32) {
+Tile_Layer :: struct {
+    texture: Texture,
+    desired_tiles_per_row: u32,
+    data: []u32,
+}
+
+ppu_blip_tile_on_to_frame_buffer :: proc(ppu: ^Ppu, tile_num: u32, tile_framebuffer: []u8, tile_framebuffer_current_tile_row, tile_framebuffer_current_tile_column, tiles_per_row: u32) -> (next_row, next_column: u32) {
+
+    tile_data := ppu_get_tile_data(ppu, u16(tile_num))
+
+    tile_framebuffer_current_tile_column := tile_framebuffer_current_tile_column
+    tile_framebuffer_current_tile_row := tile_framebuffer_current_tile_row
+
+    for tile_y in 0..=7 {
+        for tile_x in 0..=7 {
+            tile_framebuffer_x := u32(tile_framebuffer_current_tile_column * 8 + u32(tile_x))
+            tile_framebuffer_y := (tile_framebuffer_current_tile_row * 8) + u32(tile_y)
+            tile_framebuffer_xy := uint(((tiles_per_row * 8) * tile_framebuffer_y + tile_framebuffer_x) * 4)
+
+            tile_xy: uint = (8 * uint(tile_y) + uint(tile_x)) * 4
+            tile_framebuffer[tile_framebuffer_xy] = tile_data[tile_xy]
+            tile_framebuffer[tile_framebuffer_xy + 1] = tile_data[tile_xy + 1]
+            tile_framebuffer[tile_framebuffer_xy + 2] = tile_data[tile_xy + 2]
+            tile_framebuffer[tile_framebuffer_xy + 3] = tile_data[tile_xy + 3]
+        }
+    }
+
+    // Keep track of what column and row we are on.
+    tile_framebuffer_current_tile_column += 1
+    if tile_framebuffer_current_tile_column >= tiles_per_row {
+        tile_framebuffer_current_tile_column = 0
+        tile_framebuffer_current_tile_row += 1
+    }
+
+    return tile_framebuffer_current_tile_row, tile_framebuffer_current_tile_column
+
+}
+
+ppu_decode_and_render_tile_data :: proc(ppu: ^Ppu, tile_framebuffer: []u8, tiles_per_row: u32) {
 
     tile_framebuffer_row := u32(0)
     tile_framebuffer_column := u32(0)
     for tile_num in 0..=255+0x7f {
-        tile_data := ppu_get_tile_data(&gb_state.ppu, u16(tile_num))
-
-        for tile_y in 0..=7 {
-            for tile_x in 0..=7 {
-                tile_framebuffer_x := u32(tile_framebuffer_column * 8 + u32(tile_x))
-                tile_framebuffer_y := (tile_framebuffer_row * 8) + u32(tile_y)
-                tile_framebuffer_xy := uint(((tiles_per_row * 8) * tile_framebuffer_y + tile_framebuffer_x) * 4)
-
-                tile_xy: uint = (8 * uint(tile_y) + uint(tile_x)) * 4
-                tile_framebuffer[tile_framebuffer_xy] = tile_data[tile_xy]
-                tile_framebuffer[tile_framebuffer_xy + 1] = tile_data[tile_xy + 1]
-                tile_framebuffer[tile_framebuffer_xy + 2] = tile_data[tile_xy + 2]
-                tile_framebuffer[tile_framebuffer_xy + 3] = tile_data[tile_xy + 3]
-            }
-        }
-
-        // Keep track of what column and row we are on.
-        tile_framebuffer_column += 1
-        if tile_framebuffer_column >= tiles_per_row {
-            tile_framebuffer_column = 0
-            tile_framebuffer_row += 1
-        }
+        next_row, next_column := ppu_blip_tile_on_to_frame_buffer(ppu, u32(tile_num), tile_framebuffer, tile_framebuffer_row, tile_framebuffer_column, tiles_per_row)
+        tile_framebuffer_row = next_row
+        tile_framebuffer_column = next_column
     }
 
 }
