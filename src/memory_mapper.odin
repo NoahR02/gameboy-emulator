@@ -20,12 +20,19 @@ Memory_Mapper :: struct {
     _external_ram:  [8 * KILOBYTE]byte,  // 0x2000
     // [0xC000, 0xDFFF]
     _work_ram:      [8 * KILOBYTE]byte,  // 0x2000
+    _oam_ram:       [160]byte,
 	_io_ram:        [256]byte,
 	_high_ram:      [128]byte,
     gb_state: ^Gb_State,
 }
 
 memory_mapper_read :: proc(memory_mapper: Memory_Mapper, address: u16) -> u8 {
+
+    // TODO: Implement the joypad.
+    // Turn off joypad buttons. 1 = Off.
+    if address == 0xff00 {
+        return 0xFF
+    }
 
     switch {
         case address < 0x8000:
@@ -43,7 +50,7 @@ memory_mapper_read :: proc(memory_mapper: Memory_Mapper, address: u16) -> u8 {
             return 0x00
         case address >= 0xFE00 && address <= 0xFE9F:
             // Sprites
-            return 0x00
+            return memory_mapper._oam_ram[address-0xFE00]
         case address >= 0xFEA0 && address <= 0xFEFF:
             return 0x00
 
@@ -67,10 +74,11 @@ memory_mapper_read :: proc(memory_mapper: Memory_Mapper, address: u16) -> u8 {
 
 memory_mapper_write :: proc(memory_mapper: ^Memory_Mapper, address: u16, data: u8) {
 
- /*   if address == LY || address == LYC {
-        lcd_write(memory_mapper.gb_state, address, data)
-        return;
-    }*/
+    // TODO: Move this into a seperate file!
+    // DMA
+    if address == 0xFF46 {
+        dma(memory_mapper.gb_state, address, data)
+    }
 
     switch {
         case address < 0x8000:
@@ -86,6 +94,7 @@ memory_mapper_write :: proc(memory_mapper: ^Memory_Mapper, address: u16, data: u
             // Shadow/Clone of working ram, should not be written to.
         case address >= 0xFE00 && address <= 0xFE9F:
             // Sprites
+            memory_mapper._oam_ram[address-0xFE00] = data
         case address >= 0xFEA0 && address <= 0xFEFF:
             //panic(fmt.aprintf("Invalid memory write to %x\n", address))
             // Unusable

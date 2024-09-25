@@ -43,11 +43,10 @@ gameboy_configure_startup_values_after_the_boot_rom :: proc(gb_state: ^Gb_State)
 
     // LCD
     memory_mapper_write(&gb_state.memory_mapper, LY, 0x91)
+    memory_mapper_write(&gb_state.memory_mapper, LCDC, 0x91)
     memory_mapper_write(&gb_state.memory_mapper, STAT, 0x81)
-    memory_mapper_write(&gb_state.memory_mapper, LCDC, 0x91 | 0x80)
-
-
-    memory_mapper_write(&gb_state.memory_mapper, LY, 0x91)
+    memory_mapper_write(&gb_state.memory_mapper, LCDC, 0x91)
+    memory_mapper_write(&gb_state.memory_mapper, 0xFF46, 0xFF)
 }
 
 gameboy_install_rom :: proc(gb_state: ^Gb_State, rom: []byte) {
@@ -68,6 +67,7 @@ gameboy_step :: proc(gb_state: ^Gb_State) {
     interrupt_controller_handle_interrupts(gb_state)
 
     m_cycles_delta := uint(gb_state.current_cycle - old_cycle_count)
+
     gb_state.ppu.cycles += uint(m_cycles_delta)
     ppu_step(&gb_state.ppu)
     timer_step(&gb_state.timer, m_cycles_delta)
@@ -114,6 +114,7 @@ main :: proc() {
      connect_devices(&gb_state)
 
      rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
+     // rom, rom_open_success := os.read_entire_file_from_filename("assets/Tetris.gb")
      if !rom_open_success {
          panic("Failed to open the rom file!")
      }
@@ -157,13 +158,21 @@ main :: proc() {
          ppu_fill_tiles(&gb_state.ppu)
          ppu_fill_tile_map_1(&gb_state.ppu)
          ppu_fill_tile_map_2(&gb_state.ppu)
+         ppu_fill_oam_map(&gb_state.ppu)
+
          layer_fill_texture(&gb_state.ppu.tiles)
          layer_fill_texture(&gb_state.ppu.tile_map_1)
          layer_fill_texture(&gb_state.ppu.tile_map_2)
+         layer_fill_texture(&gb_state.ppu.oam_map)
 
          imgui_impl_opengl3.NewFrame()
          imgui_impl_glfw.NewFrame()
          im.NewFrame()
+
+         im.Begin("Game", &tile_map_tab_open)
+         im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+         im.End()
+
 
          im.BeginTabBar(cstring("Debug Tab Container"), {})
          if im.BeginTabItem("Tile Map", &tile_map_tab_open, {}) {
@@ -174,6 +183,11 @@ main :: proc() {
          if im.BeginTabItem("Background Layer", &background_tab_open, {}) {
              im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
              im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
+             im.EndTabItem()
+         }
+
+         if im.BeginTabItem("OAM / Sprites Layer", &background_tab_open, {}) {
+             im.Image(rawptr(uintptr(gb_state.ppu.oam_map.texture.handle)), im.Vec2{f32(gb_state.ppu.oam_map.width) * 8, f32(gb_state.ppu.oam_map.height) * 8})
              im.EndTabItem()
          }
          im.EndTabBar()

@@ -51,20 +51,18 @@ Ppu :: struct {
     tile_map_1: Layer,
     // Tile Map 2 $9C00-$9FFF
     tile_map_2: Layer,
-
-    // Screen layers.
-    background_layer: Layer,
-    window_layer: Layer,
-    oam_layer: Layer,
+    oam_map: Layer,
 }
 
 ppu_make :: proc() -> (self: Ppu) {
     tiles := layer_make(GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT, 16)
     tile_map_1 := layer_make(256, 256, 32)
     tile_map_2 := layer_make(256, 256, 32)
+    oam_map := layer_make(64, 64, 8)
     self.tiles = tiles
     self.tile_map_1 = tile_map_1
     self.tile_map_2 = tile_map_2
+    self.oam_map = oam_map
     return
 }
 
@@ -76,19 +74,36 @@ ppu_step :: proc(self: ^Ppu) {
     gb_state := self.gb_state
 
     lcd_control := transmute(Lcd_Control_Register) memory_mapper_read(gb_state.memory_mapper, LCDC)
-
-    if .LCD_Display_Enable not_in lcd_control {
-        return
-    }
-
     ly := memory_mapper_read(gb_state.memory_mapper, LY)
     lcd_status := transmute(Lcd_Status_Register)memory_mapper_read(gb_state.memory_mapper, STAT)
     interrupts_flag := transmute(Interrupt_Set)memory_mapper_read(gb_state.memory_mapper, INTERRUPTS_FLAG)
 
-    // TODO: Move some of this code into lcd.odin once we know how these devices interact better.
+    if .LCD_Display_Enable not_in lcd_control {
+        memory_mapper_write(&gb_state.memory_mapper, LY, 0)
+        ly = 0
 
+        if byte(ly) == memory_mapper_read(gb_state.memory_mapper, LYC) {
+            lcd_status.lcy_ly_equality = true
+            interrupts_flag += {.LCD}
+        } else {
+            lcd_status.lcy_ly_equality = false
+        }
+        lcd_status.lcy_ly_equality_read_only = lcd_status.lcy_ly_equality
+
+        interrupts_flag += {.LCD}
+        lcd_status.mode = .H_Blank
+        lcd_status.h_blank_interrupt = true
+        lcd_status.v_blank_interrupt = false
+        lcd_status.oam_interrupt = false
+
+        memory_mapper_write(&gb_state.memory_mapper, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
+        memory_mapper_write(&gb_state.memory_mapper, STAT, transmute(byte)lcd_status)
+        return
+    }
+
+    // TODO: Move some of this code into lcd.odin once we know how these devices interact better.
     if self.cycles >= 456 * 4 {
-        // Line end.
+    // Line end.
         self.cycles = 0
 
         ly += 1
@@ -103,7 +118,7 @@ ppu_step :: proc(self: ^Ppu) {
 
         if ly == 144 {
             // Enter mode 1. V-Blank
-            interrupts_flag += {.LCD}
+            interrupts_flag += {.LCD, .VBlank}
             lcd_status.mode = .V_Blank
             lcd_status.v_blank_interrupt = true
             lcd_status.h_blank_interrupt = false
@@ -116,12 +131,6 @@ ppu_step :: proc(self: ^Ppu) {
             lcd_status.v_blank_interrupt = false
             lcd_status.h_blank_interrupt = false
         }
-    } else if self.cycles >= 80 * 4 {
-        // Enter mode 3. Drawing.
-        lcd_status.mode = .Data_Transfer_To_Lcd
-        lcd_status.oam_interrupt = false
-        lcd_status.v_blank_interrupt = false
-        lcd_status.h_blank_interrupt = false
     } else if self.cycles >= 369 * 4 {
         // Enter mode 0. HBlank.
         interrupts_flag += {.LCD}
@@ -129,6 +138,12 @@ ppu_step :: proc(self: ^Ppu) {
         lcd_status.h_blank_interrupt = true
         lcd_status.v_blank_interrupt = false
         lcd_status.oam_interrupt = false
+    } else if self.cycles >= 80 * 4 {
+        // Enter mode 3. Drawing.
+        lcd_status.mode = .Data_Transfer_To_Lcd
+        lcd_status.oam_interrupt = false
+        lcd_status.v_blank_interrupt = false
+        lcd_status.h_blank_interrupt = false
     }
 
     if byte(ly) == memory_mapper_read(gb_state.memory_mapper, LYC) {
@@ -278,4 +293,18 @@ ppu_fill_tile_map_2 :: proc(self: ^Ppu) {
         tile_framebuffer_row = next_row
         tile_framebuffer_column = next_column
     }
+}
+
+ppu_fill_oam_map :: proc(self: ^Ppu) {
+    tile_framebuffer_row := u32(0)
+    tile_framebuffer_column := u32(0)
+
+    for sprite_index := 0; sprite_index < 159; sprite_index += 4 {
+        tile_map_index := memory_mapper_read(self.gb_state.memory_mapper, u16(0xFE00 + sprite_index + 2))
+        // Sprites always use the 8000 method.
+        next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.oam_map, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column, ._8000_Only)
+        tile_framebuffer_row = next_row
+        tile_framebuffer_column = next_column
+    }
+
 }
