@@ -70,9 +70,16 @@ gameboy_step :: proc(gb_state: ^Gb_State) {
     m_cycles_delta := uint(gb_state.current_cycle - old_cycle_count)
     gb_state.ppu.cycles += uint(m_cycles_delta)
     ppu_step(&gb_state.ppu)
+    timer_step(&gb_state.timer, m_cycles_delta)
+}
 
-    timer_divider_step(&gb_state.timer, m_cycles_delta)
-    timer_counter_step(&gb_state.timer, m_cycles_delta)
+gb_state_make :: proc() -> (self: Gb_State) {
+    self.ppu = ppu_make()
+    return
+}
+
+gb_state_delete :: proc(self: ^Gb_State) {
+    ppu_destroy(&self.ppu)
 }
 
 connect_devices :: proc(gb_state: ^Gb_State) {
@@ -85,7 +92,25 @@ connect_devices :: proc(gb_state: ^Gb_State) {
 }
 
 main :: proc() {
-     gb_state := Gb_State {}
+    assert(cast(bool)glfw.Init())
+    defer glfw.Terminate()
+
+    glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3)
+    glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3)
+    glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+
+    window := glfw.CreateWindow(1280, 720, "yuki gb", nil, nil)
+    assert(window != nil)
+    defer glfw.DestroyWindow(window)
+
+    glfw.MakeContextCurrent(window)
+    // Vsync.
+    glfw.SwapInterval(1)
+
+    gl.load_up_to(3, 3, glfw.gl_set_proc_address)
+
+     gb_state := gb_state_make()
+     defer gb_state_delete(&gb_state)
      connect_devices(&gb_state)
 
      rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
@@ -95,24 +120,6 @@ main :: proc() {
 
      gameboy_install_rom(&gb_state, rom)
      gameboy_configure_startup_values_after_the_boot_rom(&gb_state)
-
-     assert(cast(bool)glfw.Init())
-     defer glfw.Terminate()
-
-     glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3)
-     glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3)
-     glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-
-     window := glfw.CreateWindow(1280, 720, "yuki gb", nil, nil)
-     assert(window != nil)
-     defer glfw.DestroyWindow(window)
-
-     glfw.MakeContextCurrent(window)
-     glfw.SwapInterval(1) // vsync
-
-     gl.load_up_to(3, 2, proc(p: rawptr, name: cstring) {
-         (cast(^rawptr)p)^ = glfw.GetProcAddress(name)
-     })
 
      im.CHECKVERSION()
      im.CreateContext()
@@ -135,15 +142,10 @@ main :: proc() {
      imgui_impl_opengl3.Init("#version 330 core")
      defer imgui_impl_opengl3.Shutdown()
 
-     tile_data := make([]u8, GAMEBOY_SCREEN_WIDTH * GAMEBOY_SCREEN_HEIGHT * 4)
-     defer delete(tile_data)
-
      offset := int(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / 60)
 
      tile_map_tab_open := true
      background_tab_open := true
-     texture := texture_make()
-     defer texture_destroy(&texture)
 
      for !glfw.WindowShouldClose(window) {
          glfw.PollEvents()
@@ -151,8 +153,13 @@ main :: proc() {
          for _ in 0..=offset {
              gameboy_step(&gb_state)
          }
-         ppu_decode_and_render_tile_data(&gb_state.ppu, tile_data, 16)
-         texture_update(&texture, tile_data, GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT)
+
+         ppu_fill_tiles(&gb_state.ppu)
+         ppu_fill_tile_map_1(&gb_state.ppu)
+         ppu_fill_tile_map_2(&gb_state.ppu)
+         layer_fill_texture(&gb_state.ppu.tiles)
+         layer_fill_texture(&gb_state.ppu.tile_map_1)
+         layer_fill_texture(&gb_state.ppu.tile_map_2)
 
          imgui_impl_opengl3.NewFrame()
          imgui_impl_glfw.NewFrame()
@@ -160,12 +167,13 @@ main :: proc() {
 
          im.BeginTabBar(cstring("Debug Tab Container"), {})
          if im.BeginTabItem("Tile Map", &tile_map_tab_open, {}) {
-             im.Image(rawptr(uintptr(texture.handle)), im.Vec2{GAMEBOY_SCREEN_WIDTH * 4, GAMEBOY_SCREEN_HEIGHT * 4})
+             im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
              im.EndTabItem()
          }
 
          if im.BeginTabItem("Background Layer", &background_tab_open, {}) {
-             im.Image(rawptr(uintptr(texture.handle)), im.Vec2{GAMEBOY_SCREEN_WIDTH * 2, GAMEBOY_SCREEN_HEIGHT * 2})
+             im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+             im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
              im.EndTabItem()
          }
          im.EndTabBar()

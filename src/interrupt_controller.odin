@@ -66,7 +66,6 @@ interrupt_controller_handle_interrupts :: proc(gb_state: ^Gb_State) {
             interrupts_flag -= {.Joypad}
         }
 
-        // If any interrupts happen, wake up the CPU.
         if did_interrupt_occur {
             gb_state.current_cycle += 5
             memory_mapper_write(gb_state.cpu.memory_mapper, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)

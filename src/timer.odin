@@ -21,6 +21,11 @@ Timer :: struct {
     divider_delta: uint
 }
 
+timer_step :: proc(self: ^Timer, m_cycles_delta: uint) {
+    timer_divider_step(self, m_cycles_delta)
+    timer_counter_step(self, m_cycles_delta)
+}
+
 timer_divider_step :: proc(self: ^Timer, m_cycles_delta: uint) {
     self.divider_delta += m_cycles_delta
 
@@ -42,7 +47,7 @@ timer_counter_step :: proc(self: ^Timer, m_cycles_delta: uint) {
 
     // Increment the timer divier counter every n memory cycles.
     // n is variable because the timer counter can increment at different frequencies.
-    increment_on_n_m_cycles := uint(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / timer_get_clock_frequency(gb_state^))
+    increment_on_n_m_cycles := uint(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / timer_get_clock_frequency(self^))
     if self.counter_delta >= increment_on_n_m_cycles {
         self.counter_delta = 0
 
@@ -62,8 +67,8 @@ timer_counter_step :: proc(self: ^Timer, m_cycles_delta: uint) {
 
 }
 
-timer_get_clock_frequency :: proc(gb_state: Gb_State) -> int {
-    clock_frequency := memory_mapper_read(gb_state.memory_mapper, TAC) & 0x03
+timer_get_clock_frequency :: proc(self: Timer) -> int {
+    clock_frequency := memory_mapper_read(self.gb_state.memory_mapper, TAC) & 0x03
 
     switch clock_frequency {
         case 0: return CLOCK_0
@@ -72,8 +77,7 @@ timer_get_clock_frequency :: proc(gb_state: Gb_State) -> int {
         case 3: return CLOCK_3
     }
 
-    // Unreachable.
-    return 0
+    unreachable()
 }
 
 timer_counter_is_running :: proc(self: Timer) -> bool {

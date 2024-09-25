@@ -3,6 +3,8 @@ package tests
 import "core:testing"
 import "core:os"
 import "core:log"
+import "vendor:glfw"
+import gl "vendor:OpenGL"
 import gameboy "../src"
 
 tests :: [?]string {
@@ -25,9 +27,29 @@ import "core:strings"
 @(test)
 test_cpu :: proc(t: ^testing.T) {
 
+
+    assert(cast(bool)glfw.Init())
+    defer glfw.Terminate()
+
+    glfw.WindowHint(glfw.VISIBLE, false)
+    glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3)
+    glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3)
+    glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+
+    window := glfw.CreateWindow(1280, 720, "yuki gb", nil, nil)
+    assert(window != nil)
+    defer glfw.DestroyWindow(window)
+
+    glfw.MakeContextCurrent(window)
+    // Vsync.
+    glfw.SwapInterval(1)
+
+    gl.load_up_to(3, 3, glfw.gl_set_proc_address)
+
     for test in tests {
         using gameboy
-        gb_state := Gb_State {}
+        gb_state := gb_state_make()
+        defer gb_state_delete(&gb_state)
         connect_devices(&gb_state)
         
         rom, rom_read_success := os.read_entire_file(test)
