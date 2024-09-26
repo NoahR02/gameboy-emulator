@@ -88,6 +88,9 @@ connect_devices :: proc(gb_state: ^Gb_State) {
 }
 
 main :: proc() {
+    windowing_system_startup()
+    defer windowing_system_clean_up()
+
     window := window_make(1280, 720, "yuki gb")
     defer window_destroy(&window)
 

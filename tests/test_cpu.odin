@@ -26,28 +26,16 @@ import "core:strings"
 
 @(test)
 test_cpu :: proc(t: ^testing.T) {
+    using gameboy
 
-
-    assert(cast(bool)glfw.Init())
-    defer glfw.Terminate()
-
+    windowing_system_startup()
+    defer windowing_system_clean_up()
+    // For now we will just hide the window, but in the future we'll need to decouple the ppu from opengl.
     glfw.WindowHint(glfw.VISIBLE, false)
-    glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3)
-    glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3)
-    glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
-
-    window := glfw.CreateWindow(1280, 720, "yuki gb", nil, nil)
-    assert(window != nil)
-    defer glfw.DestroyWindow(window)
-
-    glfw.MakeContextCurrent(window)
-    // Vsync.
-    glfw.SwapInterval(1)
-
-    gl.load_up_to(3, 3, glfw.gl_set_proc_address)
+    window := window_make(1280, 720, "yuki gb")
+    defer window_destroy(&window)
 
     for test in tests {
-        using gameboy
         gb_state := gb_state_make()
         defer gb_state_delete(&gb_state)
         connect_devices(&gb_state)

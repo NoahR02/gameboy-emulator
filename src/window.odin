@@ -11,10 +11,6 @@ Window :: struct {
     title: string,
 }
 
-
-@(private)
-// For now we will setup the windowing system when we create the window.
-// In the future we should consider decoupling them, so that we can have multiple windows.
 windowing_system_startup :: proc() {
     assert(cast(bool)glfw.Init())
 
@@ -23,13 +19,11 @@ windowing_system_startup :: proc() {
     glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
 }
 
-@(private)
 windowing_system_clean_up:: proc() {
     glfw.Terminate()
 }
 
 window_make :: proc(width, height: u32, title: string) -> (self: Window) {
-    windowing_system_startup()
     title_cstring := strings.clone_to_cstring(title, context.temp_allocator)
     self.handle = glfw.CreateWindow(i32(width), i32(height), title_cstring, nil, nil)
     self.width = width
@@ -66,5 +60,4 @@ window_should_close :: proc(self: Window) -> bool {
 window_destroy :: proc(self: ^Window) {
     delete(self.title)
     glfw.DestroyWindow(self.handle)
-    windowing_system_clean_up()
 }
