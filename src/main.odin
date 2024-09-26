@@ -82,7 +82,7 @@ connect_devices :: proc(gb_state: ^Gb_State) {
     // This is a bit nasty because it will create circular references, but most of the time each device cannot operate in isolation.
     // TODO: Rework how the devices communicate.
     gb_state.cpu.memory_mapper = &gb_state.memory_mapper
-    gb_state.ppu.gb_state = gb_state
+    gb_state.ppu.memory_mapper = &gb_state.memory_mapper
     gb_state.timer.memory_mapper = &gb_state.memory_mapper
 }
 
