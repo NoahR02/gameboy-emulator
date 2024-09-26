@@ -40,6 +40,14 @@ window_make :: proc(width, height: u32, title: string) -> (self: Window) {
     return
 }
 
+window_poll_for_events :: proc() {
+    glfw.PollEvents()
+}
+
+window_swap_buffers :: proc(window: Window) {
+    glfw.SwapBuffers(window.handle)
+}
+
 @(private)
 window_hook_in_to_graphics_library :: proc(self: ^Window) {
     glfw.MakeContextCurrent(self.handle)

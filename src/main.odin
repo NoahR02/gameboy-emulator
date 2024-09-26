@@ -15,11 +15,8 @@ Gb_State :: struct {
 
 import "core:log"
 import "core:os"
-import "vendor:glfw"
 import gl "vendor:OpenGL"
 import im "../odin-imgui"
-import "../odin-imgui/imgui_impl_glfw"
-import "../odin-imgui/imgui_impl_opengl3"
 
 GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK :: 1_048_576
 GAMEBOY_CPU_SPEED :: GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK * 4
@@ -111,47 +108,47 @@ main :: proc() {
    offset := int(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / 60)
 
    for !window_should_close(window) {
-       glfw.PollEvents()
+       window_poll_for_events()
 
-        for _ in 0..=offset {
-            gameboy_step(&gb_state)
-        }
+       for _ in 0..=offset {
+           gameboy_step(&gb_state)
+       }
 
-        ppu_fill_tiles(&gb_state.ppu)
-        ppu_fill_tile_map_1(&gb_state.ppu)
-        ppu_fill_tile_map_2(&gb_state.ppu)
-        ppu_fill_oam_map(&gb_state.ppu)
+       ppu_fill_tiles(&gb_state.ppu)
+       ppu_fill_tile_map_1(&gb_state.ppu)
+       ppu_fill_tile_map_2(&gb_state.ppu)
+       ppu_fill_oam_map(&gb_state.ppu)
 
-        layer_fill_texture(&gb_state.ppu.tiles)
-        layer_fill_texture(&gb_state.ppu.tile_map_1)
-        layer_fill_texture(&gb_state.ppu.tile_map_2)
-        layer_fill_texture(&gb_state.ppu.oam_map)
+       layer_fill_texture(&gb_state.ppu.tiles)
+       layer_fill_texture(&gb_state.ppu.tile_map_1)
+       layer_fill_texture(&gb_state.ppu.tile_map_2)
+       layer_fill_texture(&gb_state.ppu.oam_map)
 
-        imgui_preprare_frame()
+       imgui_preprare_frame()
 
-        im.Begin("Game", &p_open_default)
-        im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
-        im.End()
+       im.Begin("Game", &p_open_default)
+       im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+       im.End()
 
-        im.BeginTabBar(cstring("Debug Tab Container"), {})
-        if im.BeginTabItem("Tile Map", &p_open_default, {}) {
-            im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
-            im.EndTabItem()
-        }
+       im.BeginTabBar(cstring("Debug Tab Container"))
+       if im.BeginTabItem("Tile Map", &p_open_default) {
+           im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
+           im.EndTabItem()
+       }
 
-         if im.BeginTabItem("Background Layer", &p_open_default, {}) {
-             im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
-             im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
-             im.EndTabItem()
-         }
+       if im.BeginTabItem("Background Layer", &p_open_default) {
+           im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+           im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
+           im.EndTabItem()
+       }
 
-         if im.BeginTabItem("OAM / Sprites Layer", &p_open_default, {}) {
-             im.Image(rawptr(uintptr(gb_state.ppu.oam_map.texture.handle)), im.Vec2{f32(gb_state.ppu.oam_map.width) * 8, f32(gb_state.ppu.oam_map.height) * 8})
-             im.EndTabItem()
-         }
-         im.EndTabBar()
+       if im.BeginTabItem("OAM / Sprites Layer", &p_open_default) {
+           im.Image(rawptr(uintptr(gb_state.ppu.oam_map.texture.handle)), im.Vec2{f32(gb_state.ppu.oam_map.width) * 8, f32(gb_state.ppu.oam_map.height) * 8})
+           im.EndTabItem()
+       }
+       im.EndTabBar()
 
-         imgui_assemble_and_render_frame(window)
-         glfw.SwapBuffers(window.handle)
+       imgui_assemble_and_render_frame(window)
+       window_swap_buffers(window)
    }
 }
