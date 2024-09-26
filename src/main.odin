@@ -21,7 +21,6 @@ import im "../odin-imgui"
 import "../odin-imgui/imgui_impl_glfw"
 import "../odin-imgui/imgui_impl_opengl3"
 
-DISABLE_DOCKING :: #config(DISABLE_DOCKING, false)
 GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK :: 1_048_576
 GAMEBOY_CPU_SPEED :: GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK * 4
 GAMEBOY_SCREEN_WIDTH :: 128
@@ -92,120 +91,67 @@ connect_devices :: proc(gb_state: ^Gb_State) {
 }
 
 main :: proc() {
-    assert(cast(bool)glfw.Init())
-    defer glfw.Terminate()
+    window := window_make(1280, 720, "yuki gb")
+    defer window_destroy(&window)
 
-    glfw.WindowHint(glfw.CONTEXT_VERSION_MAJOR, 3)
-    glfw.WindowHint(glfw.CONTEXT_VERSION_MINOR, 3)
-    glfw.WindowHint(glfw.OPENGL_PROFILE, glfw.OPENGL_CORE_PROFILE)
+    gb_state := gb_state_make()
+    defer gb_state_delete(&gb_state)
+    connect_devices(&gb_state)
 
-    window := glfw.CreateWindow(1280, 720, "yuki gb", nil, nil)
-    assert(window != nil)
-    defer glfw.DestroyWindow(window)
+    rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
+    if !rom_open_success {
+        panic("Failed to open the rom file!")
+    }
 
-    glfw.MakeContextCurrent(window)
-    // Vsync.
-    glfw.SwapInterval(1)
+   gameboy_install_rom(&gb_state, rom)
+   gameboy_configure_startup_values_after_the_boot_rom(&gb_state)
+   imgui_startup(window)
+   defer imgui_clean_up()
 
-    gl.load_up_to(3, 3, glfw.gl_set_proc_address)
+   offset := int(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / 60)
 
-     gb_state := gb_state_make()
-     defer gb_state_delete(&gb_state)
-     connect_devices(&gb_state)
+   for !window_should_close(window) {
+       glfw.PollEvents()
 
-     rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
-     // rom, rom_open_success := os.read_entire_file_from_filename("assets/Tetris.gb")
-     if !rom_open_success {
-         panic("Failed to open the rom file!")
-     }
+        for _ in 0..=offset {
+            gameboy_step(&gb_state)
+        }
 
-     gameboy_install_rom(&gb_state, rom)
-     gameboy_configure_startup_values_after_the_boot_rom(&gb_state)
+        ppu_fill_tiles(&gb_state.ppu)
+        ppu_fill_tile_map_1(&gb_state.ppu)
+        ppu_fill_tile_map_2(&gb_state.ppu)
+        ppu_fill_oam_map(&gb_state.ppu)
 
-     im.CHECKVERSION()
-     im.CreateContext()
-     defer im.DestroyContext()
-     io := im.GetIO()
-     io.ConfigFlags += {.NavEnableKeyboard, .NavEnableGamepad}
-     when !DISABLE_DOCKING {
-         io.ConfigFlags += {.DockingEnable}
-         io.ConfigFlags += {.ViewportsEnable}
+        layer_fill_texture(&gb_state.ppu.tiles)
+        layer_fill_texture(&gb_state.ppu.tile_map_1)
+        layer_fill_texture(&gb_state.ppu.tile_map_2)
+        layer_fill_texture(&gb_state.ppu.oam_map)
 
-         style := im.GetStyle()
-         style.WindowRounding = 0
-         style.Colors[im.Col.WindowBg].w = 1
-     }
+        imgui_preprare_frame()
 
-     im.StyleColorsDark()
+        im.Begin("Game", &p_open_default)
+        im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+        im.End()
 
-     imgui_impl_glfw.InitForOpenGL(window, true)
-     defer imgui_impl_glfw.Shutdown()
-     imgui_impl_opengl3.Init("#version 330 core")
-     defer imgui_impl_opengl3.Shutdown()
+        im.BeginTabBar(cstring("Debug Tab Container"), {})
+        if im.BeginTabItem("Tile Map", &p_open_default, {}) {
+            im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
+            im.EndTabItem()
+        }
 
-     offset := int(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / 60)
-
-     tile_map_tab_open := true
-     background_tab_open := true
-
-     for !glfw.WindowShouldClose(window) {
-         glfw.PollEvents()
-
-         for _ in 0..=offset {
-             gameboy_step(&gb_state)
-         }
-
-         ppu_fill_tiles(&gb_state.ppu)
-         ppu_fill_tile_map_1(&gb_state.ppu)
-         ppu_fill_tile_map_2(&gb_state.ppu)
-         ppu_fill_oam_map(&gb_state.ppu)
-
-         layer_fill_texture(&gb_state.ppu.tiles)
-         layer_fill_texture(&gb_state.ppu.tile_map_1)
-         layer_fill_texture(&gb_state.ppu.tile_map_2)
-         layer_fill_texture(&gb_state.ppu.oam_map)
-
-         imgui_impl_opengl3.NewFrame()
-         imgui_impl_glfw.NewFrame()
-         im.NewFrame()
-
-         im.Begin("Game", &tile_map_tab_open)
-         im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
-         im.End()
-
-
-         im.BeginTabBar(cstring("Debug Tab Container"), {})
-         if im.BeginTabItem("Tile Map", &tile_map_tab_open, {}) {
-             im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
-             im.EndTabItem()
-         }
-
-         if im.BeginTabItem("Background Layer", &background_tab_open, {}) {
+         if im.BeginTabItem("Background Layer", &p_open_default, {}) {
              im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
              im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
              im.EndTabItem()
          }
 
-         if im.BeginTabItem("OAM / Sprites Layer", &background_tab_open, {}) {
+         if im.BeginTabItem("OAM / Sprites Layer", &p_open_default, {}) {
              im.Image(rawptr(uintptr(gb_state.ppu.oam_map.texture.handle)), im.Vec2{f32(gb_state.ppu.oam_map.width) * 8, f32(gb_state.ppu.oam_map.height) * 8})
              im.EndTabItem()
          }
          im.EndTabBar()
 
-         im.Render()
-         window_width, window_height := glfw.GetFramebufferSize(window)
-         gl.Viewport(0, 0, window_width, window_height)
-         gl.ClearColor(0, 0, 0, 1)
-         gl.Clear(gl.COLOR_BUFFER_BIT)
-         imgui_impl_opengl3.RenderDrawData(im.GetDrawData())
-
-         when !DISABLE_DOCKING {
-             backup_current_window := glfw.GetCurrentContext()
-             im.UpdatePlatformWindows()
-             im.RenderPlatformWindowsDefault()
-             glfw.MakeContextCurrent(backup_current_window)
-         }
-
-         glfw.SwapBuffers(window)
-     }
+         imgui_assemble_and_render_frame(window)
+         glfw.SwapBuffers(window.handle)
+   }
 }
