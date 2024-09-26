@@ -23,7 +23,7 @@ Memory_Mapper :: struct {
     _oam_ram:       [160]byte,
 	_io_ram:        [256]byte,
 	_high_ram:      [128]byte,
-    gb_state: ^Gb_State,
+    dma_transfer_requested: bool
 }
 
 memory_mapper_read :: proc(memory_mapper: Memory_Mapper, address: u16) -> u8 {
@@ -77,7 +77,8 @@ memory_mapper_write :: proc(memory_mapper: ^Memory_Mapper, address: u16, data: u
     // TODO: Move this into a seperate file!
     // DMA
     if address == 0xFF46 {
-        dma(memory_mapper.gb_state, address, data)
+        memory_mapper.dma_transfer_requested = true
+        dma(memory_mapper, address, data)
     }
 
     switch {

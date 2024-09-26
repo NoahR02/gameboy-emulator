@@ -8,9 +8,15 @@ Cpu :: struct {
     registers: Registers,
     // An on/off switch that when off will ignore interrupts and permit interrupts when on.
     ime: bool,
+    is_halted: bool,
 }
 
-cpu_fetch_decode_execute :: proc(cpu: ^Cpu) -> (m_cycles: uint, is_halted: bool) {
+cpu_step :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
+
+    if cpu.is_halted {
+        m_cycles = 1
+        return
+    }
 
     opcode := memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.PC))
     // fmt.printf("RUNNING OPCODE: %s at %s \n", format_8_bit_number(opcode), format_address([]byte{gb_state.cpu.registers.PC.low, gb_state.cpu.registers.PC.high}))
@@ -143,7 +149,7 @@ cpu_fetch_decode_execute :: proc(cpu: ^Cpu) -> (m_cycles: uint, is_halted: bool)
 
             // HALT
             case 0x76: {
-                is_halted = true
+                cpu.is_halted = true
             }
 
             case: panic(fmt.aprintfln("%s not implemented", format_8_bit_number(opcode), allocator = context.temp_allocator))

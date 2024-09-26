@@ -10,7 +10,6 @@ Gb_State :: struct {
     timer: Timer,
     memory_mapper: Memory_Mapper,
     current_cycle: uint,
-    is_halted: bool,
 }
 
 import "core:log"
@@ -53,16 +52,15 @@ gameboy_install_rom :: proc(gb_state: ^Gb_State, rom: []byte) {
 
 gameboy_step :: proc(gb_state: ^Gb_State) {
     old_cycle_count := gb_state.current_cycle
-    if !gb_state.is_halted {
-        m_cycles, is_halted := cpu_fetch_decode_execute(&gb_state.cpu)
-        gb_state.current_cycle += m_cycles
-        gb_state.is_halted = is_halted
-    } else {
-        // HALT
-        gb_state.current_cycle += 1
+    gb_state.current_cycle += cpu_step(&gb_state.cpu)
+
+    // Account for how long a DMA transfer takes.
+    if gb_state.memory_mapper.dma_transfer_requested {
+        gb_state.memory_mapper.dma_transfer_requested = false
+        gb_state.current_cycle += 160
     }
 
-    interrupt_controller_handle_interrupts(gb_state)
+    gb_state.current_cycle += interrupt_controller_handle_interrupts(&gb_state.cpu)
 
     m_cycles_delta := uint(gb_state.current_cycle - old_cycle_count)
 
@@ -85,8 +83,7 @@ connect_devices :: proc(gb_state: ^Gb_State) {
     // TODO: Rework how the devices communicate.
     gb_state.cpu.memory_mapper = &gb_state.memory_mapper
     gb_state.ppu.gb_state = gb_state
-    gb_state.memory_mapper.gb_state = gb_state
-    gb_state.timer.gb_state = gb_state
+    gb_state.timer.memory_mapper = &gb_state.memory_mapper
 }
 
 main :: proc() {
