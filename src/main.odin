@@ -9,7 +9,7 @@ Gb_State :: struct {
     ppu: Ppu,
     timer: Timer,
     memory_mapper: Memory_Mapper,
-    current_cycle: int,
+    current_cycle: uint,
     is_halted: bool,
 }
 
@@ -54,7 +54,9 @@ gameboy_install_rom :: proc(gb_state: ^Gb_State, rom: []byte) {
 gameboy_step :: proc(gb_state: ^Gb_State) {
     old_cycle_count := gb_state.current_cycle
     if !gb_state.is_halted {
-        cpu_fetch_decode_execute(gb_state)
+        m_cycles, is_halted := cpu_fetch_decode_execute(&gb_state.cpu)
+        gb_state.current_cycle += m_cycles
+        gb_state.is_halted = is_halted
     } else {
         // HALT
         gb_state.current_cycle += 1

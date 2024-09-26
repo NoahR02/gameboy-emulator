@@ -68,6 +68,9 @@ ppu_make :: proc() -> (self: Ppu) {
 
 ppu_destroy :: proc(self: ^Ppu) {
     layer_delete(&self.tiles)
+    layer_delete(&self.tile_map_1)
+    layer_delete(&self.tile_map_2)
+    layer_delete(&self.oam_map)
 }
 
 ppu_step :: proc(self: ^Ppu) {
