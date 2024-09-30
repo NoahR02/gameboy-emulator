@@ -16,8 +16,8 @@ INTERRUPTS_FLAG :: 0xFF0F
 INTERRUPTS_ENABLED :: 0xFFFF
 
 interrupt_controller_handle_interrupts :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
-    interrupts_enabled := transmute(Interrupt_Set)memory_mapper_read(cpu.memory_mapper^, INTERRUPTS_ENABLED)
-    interrupts_flag := transmute(Interrupt_Set)memory_mapper_read(cpu.memory_mapper^, INTERRUPTS_FLAG)
+    interrupts_enabled := transmute(Interrupt_Set)bus_read(cpu.bus^, INTERRUPTS_ENABLED)
+    interrupts_flag := transmute(Interrupt_Set)bus_read(cpu.bus^, INTERRUPTS_FLAG)
     did_interrupt_occur := false
 
     if
@@ -35,11 +35,10 @@ interrupt_controller_handle_interrupts :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
     }
 
     if cpu.ime {
-        using cpu.memory_mapper
 
         push_pc :: proc(cpu: ^Cpu) {
-            memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
-            memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
+            bus_write(cpu.bus, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
+            bus_write(cpu.bus, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
             cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
         }
 
@@ -68,7 +67,7 @@ interrupt_controller_handle_interrupts :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
 
         if did_interrupt_occur {
             m_cycles += 5
-            memory_mapper_write(cpu.memory_mapper, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
+            bus_write(cpu.bus, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
         }
     }
 

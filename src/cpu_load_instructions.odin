@@ -6,9 +6,9 @@ cpu_ld_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     src := extract_src_register(opcode)
 
     if dst == OPCODE_REGISTER_HL_INDEX {
-        memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.HL), get_register_value_from_opcode_index(cpu.registers, src))
+        bus_write(cpu.bus, u16(cpu.registers.HL), get_register_value_from_opcode_index(cpu.registers, src))
     } else if src == OPCODE_REGISTER_HL_INDEX {
-        set_register_value_from_opcode_index(&cpu.registers, dst, memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL)))
+        set_register_value_from_opcode_index(&cpu.registers, dst, bus_read(cpu.bus^, u16(cpu.registers.HL)))
     } else {
         set_register_value_from_opcode_index(&cpu.registers, opcode_index = dst, value = get_register_value_from_opcode_index(cpu.registers, src))
     }
@@ -19,7 +19,7 @@ cpu_ld_immediate_into_register_8_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data:
     immediate := opcode_data
 
     if dst == OPCODE_REGISTER_HL_INDEX {
-        memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.HL), immediate)
+        bus_write(cpu.bus, u16(cpu.registers.HL), immediate)
         
     } else {
         set_register_value_from_opcode_index(&cpu.registers, dst, immediate)
@@ -45,66 +45,66 @@ cpu_ld_a_with_value_or_store_at_register_pair_address :: proc(cpu: ^Cpu, opcode:
 
     switch dst {
         case LD_BC_A: {
-            memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.BC), a_register_value)
+            bus_write(cpu.bus, u16(cpu.registers.BC), a_register_value)
         }
         case LD_DE_A: {
-            memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.DE), a_register_value)
+            bus_write(cpu.bus, u16(cpu.registers.DE), a_register_value)
         }
         case LD_HLI_A: {
-            memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.HL), a_register_value)
+            bus_write(cpu.bus, u16(cpu.registers.HL), a_register_value)
             cpu.registers.HL = Register(u16(cpu.registers.HL) + 1)
         }
         case LD_HLD_A: {
-            memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.HL), a_register_value)
+            bus_write(cpu.bus, u16(cpu.registers.HL), a_register_value)
             cpu.registers.HL = Register(u16(cpu.registers.HL) - 1)
         }
         case LD_A_BC: {
-            cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.BC))
+            cpu.registers.AF.high = bus_read(cpu.bus^, u16(cpu.registers.BC))
         }
         case LD_A_DE: {
-            cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.DE))
+            cpu.registers.AF.high = bus_read(cpu.bus^, u16(cpu.registers.DE))
         }
         case LD_A_HLI: {
-            cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+            cpu.registers.AF.high = bus_read(cpu.bus^, u16(cpu.registers.HL))
             cpu.registers.HL = Register(u16(cpu.registers.HL) + 1)
         }
         case LD_A_HLD: {
-            cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+            cpu.registers.AF.high = bus_read(cpu.bus^, u16(cpu.registers.HL))
             cpu.registers.HL = Register(u16(cpu.registers.HL) - 1)
         }
     }
 }
 
 cpu_ld_a_at_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
-    memory_mapper_write(cpu.memory_mapper, opcode_data, cpu.registers.AF.high)
+    bus_write(cpu.bus, opcode_data, cpu.registers.AF.high)
 }
 
 cpu_ld_data_at_address_to_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
-     cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, opcode_data)
+     cpu.registers.AF.high = bus_read(cpu.bus^, opcode_data)
 }
 
 // ldh = Load from high page
 cpu_ldh_plus_c_register_from_a :: proc(cpu: ^Cpu, opcode: u8)  {
     address := u16(0xFF00) + u16(cpu.registers.BC.low)
-    memory_mapper_write(cpu.memory_mapper, address, cpu.registers.AF.high)
+    bus_write(cpu.bus, address, cpu.registers.AF.high)
 }
 
 cpu_ldh_plus_c_register_to_a :: proc(cpu: ^Cpu, opcode: u8)  {
     address := u16(0xFF00) + u16(cpu.registers.BC.low)
-    cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, address)
+    cpu.registers.AF.high = bus_read(cpu.bus^, address)
 }
 
 // ldh = Load from high page
 cpu_ldh_from_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     address := u16(0xFF00) + u16(opcode_data)
-    memory_mapper_write(cpu.memory_mapper, address, cpu.registers.AF.high)
+    bus_write(cpu.bus, address, cpu.registers.AF.high)
 }
 
 
 // ldh = Load from high page
 cpu_ldh_to_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     address := u16(0xFF00) + u16(opcode_data)
-    cpu.registers.AF.high = memory_mapper_read(cpu.memory_mapper^, address)
+    cpu.registers.AF.high = bus_read(cpu.bus^, address)
 }
 
 // 8-bit Load/Store/Move END
@@ -116,8 +116,8 @@ cpu_ld_hl_into_sp :: proc(cpu: ^Cpu, opcode: u8) {
 }
 
 cpu_ld_sp_at_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
-    memory_mapper_write(cpu.memory_mapper, opcode_data, cpu.registers.SP.low)
-    memory_mapper_write(cpu.memory_mapper, opcode_data + 1, cpu.registers.SP.high)
+    bus_write(cpu.bus, opcode_data, cpu.registers.SP.low)
+    bus_write(cpu.bus, opcode_data + 1, cpu.registers.SP.high)
 }
 
 cpu_ld_immediate_into_register_pair_16_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
@@ -153,16 +153,16 @@ cpu_push :: proc(cpu: ^Cpu, opcode: u8)  {
         }
    }
 
-    memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 1, u8(high))
-    memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 2, u8(low))
+    bus_write(cpu.bus, u16(cpu.registers.SP) - 1, u8(high))
+    bus_write(cpu.bus, u16(cpu.registers.SP) - 2, u8(low))
     
     cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
 }
 
 cpu_pop :: proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register_pair(opcode)
-    low_sp := memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP))
-    high_sp := memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP) + 1)
+    low_sp := bus_read(cpu.bus^, u16(cpu.registers.SP))
+    high_sp := bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
 
     switch dst {
         case 0: { cpu.registers.BC.high = high_sp; cpu.registers.BC.low = low_sp; }

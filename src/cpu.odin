@@ -4,7 +4,7 @@ import "core:fmt"
 import "core:encoding/endian"
 
 Cpu :: struct {
-    memory_mapper: ^Memory_Mapper,
+    bus: ^Bus,
     registers: Registers,
     // An on/off switch that when off will ignore interrupts and permit interrupts when on.
     ime: bool,
@@ -18,7 +18,7 @@ cpu_step :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
         return
     }
 
-    opcode := memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.PC))
+    opcode := bus_read(cpu.bus^, u16(cpu.registers.PC))
     // fmt.printf("RUNNING OPCODE: %s at %s \n", format_8_bit_number(opcode), format_address([]byte{gb_state.cpu.registers.PC.low, gb_state.cpu.registers.PC.high}))
     cpu.registers.PC = Register(u16(cpu.registers.PC) + 1)
 
@@ -30,13 +30,13 @@ cpu_step :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
     opcode_data_u16: u16 = 0
 
     if opcode_length == 3 {
-        byte1 := memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.PC))
-        byte2 := memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.PC) + 1)
+        byte1 := bus_read(cpu.bus^, u16(cpu.registers.PC))
+        byte2 := bus_read(cpu.bus^, u16(cpu.registers.PC) + 1)
         data, __ := endian.get_u16({byte1, byte2}, .Little)
         opcode_data_u16 = data
         cpu.registers.PC = Register(u16(cpu.registers.PC) + 2)
     } else if opcode_length == 2 {
-        opcode_data_u8 = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.PC))
+        opcode_data_u8 = bus_read(cpu.bus^, u16(cpu.registers.PC))
         cpu.registers.PC = Register(u16(cpu.registers.PC) + 1)
     }
 
@@ -44,7 +44,7 @@ cpu_step :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
 
     // 0xCB prefixed instructions:
     if opcode == 0xcb {
-            opcode_data_u8 = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.PC))
+            opcode_data_u8 = bus_read(cpu.bus^, u16(cpu.registers.PC))
             cpu.registers.PC = Register(u16(cpu.registers.PC) + 1)
             switch opcode_data_u8 {
                 case 0x00..=0x07: cpu_rlc(cpu, opcode, opcode_data_u8)

@@ -11,7 +11,7 @@ cpu_add_8_bit :: proc(cpu: ^Cpu, opcode: u8, add_carry_flag: bool = false)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte
     if src == OPCODE_REGISTER_HL_INDEX { 
-        b = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        b = bus_read(cpu.bus^, u16(cpu.registers.HL))
     } else {
         b = get_register_value_from_opcode_index(cpu.registers, src)
     }
@@ -54,7 +54,7 @@ cpu_sub_8_bit :: proc(cpu: ^Cpu, opcode: u8, sub_carry_flag: bool = false)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte
     if src == OPCODE_REGISTER_HL_INDEX {
-        b = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        b = bus_read(cpu.bus^, u16(cpu.registers.HL))
     } else {
         b = get_register_value_from_opcode_index(cpu.registers, src)
     }
@@ -97,7 +97,7 @@ cpu_inc_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     b: byte = 1
     if dst == OPCODE_REGISTER_HL_INDEX {
         
-        a = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        a = bus_read(cpu.bus^, u16(cpu.registers.HL))
     } else {
         a = get_register_value_from_opcode_index(cpu.registers, dst)
     }
@@ -109,7 +109,7 @@ cpu_inc_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     set_half_carry_flag(&cpu.registers, compute_half_carry_flag_by_8_bit_addition(cpu.registers, a, b))
 
     if dst == OPCODE_REGISTER_HL_INDEX { 
-        memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.HL), sum)
+        bus_write(cpu.bus, u16(cpu.registers.HL), sum)
     } else {
         set_register_value_from_opcode_index (
             &cpu.registers,
@@ -126,7 +126,7 @@ cpu_dec_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     b: byte = 1
     if dst == OPCODE_REGISTER_HL_INDEX { 
         
-        a = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        a = bus_read(cpu.bus^, u16(cpu.registers.HL))
     } else {
         a = get_register_value_from_opcode_index(cpu.registers, dst)
     }
@@ -138,7 +138,7 @@ cpu_dec_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     set_half_carry_flag(&cpu.registers, compute_half_carry_flag_by_8_bit_subtraction(cpu.registers, a, b))
 
     if dst == OPCODE_REGISTER_HL_INDEX {
-        memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.HL), difference)
+        bus_write(cpu.bus, u16(cpu.registers.HL), difference)
     } else {
         set_register_value_from_opcode_index (
             &cpu.registers,
@@ -155,7 +155,7 @@ cpu_xor_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte
     if src == OPCODE_REGISTER_HL_INDEX { 
-        b = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        b = bus_read(cpu.bus^, u16(cpu.registers.HL))
         
     } else {
         b = get_register_value_from_opcode_index(cpu.registers, src)
@@ -200,7 +200,7 @@ cpu_cp_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte
     if src == OPCODE_REGISTER_HL_INDEX {
-        b = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        b = bus_read(cpu.bus^, u16(cpu.registers.HL))
         
     } else {
         b = get_register_value_from_opcode_index(cpu.registers, src)
@@ -232,7 +232,7 @@ cpu_and_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte
     if src == OPCODE_REGISTER_HL_INDEX { 
-        b = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        b = bus_read(cpu.bus^, u16(cpu.registers.HL))
     } else {
         b = get_register_value_from_opcode_index(cpu.registers, src)
     }
@@ -277,7 +277,7 @@ cpu_or_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte
     if src == OPCODE_REGISTER_HL_INDEX { 
-        b = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.HL))
+        b = bus_read(cpu.bus^, u16(cpu.registers.HL))
     } else {
         b = get_register_value_from_opcode_index(cpu.registers, src)
     }

@@ -69,8 +69,8 @@ cpu_jr_to_relative_u8_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode
 
 
 cpu_call_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
-    memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
-    memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
+    bus_write(cpu.bus, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
+    bus_write(cpu.bus, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
     cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
     address := opcode_data
     cpu.registers.PC = Register(address)
@@ -81,8 +81,8 @@ cpu_call_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  
     condition := extract_condition(opcode)
 
     if is_condition_true(cpu.registers, condition) {
-        memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
-        memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
+        bus_write(cpu.bus, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
+        bus_write(cpu.bus, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
         cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
         address := opcode_data
         cpu.registers.PC = Register(address)
@@ -90,14 +90,14 @@ cpu_call_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  
 }
 
 cpu_ret :: proc(cpu: ^Cpu, opcode: u8)  {
-    cpu.registers.PC.low = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP))
-    cpu.registers.PC.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP) + 1)
+    cpu.registers.PC.low = bus_read(cpu.bus^, u16(cpu.registers.SP))
+    cpu.registers.PC.high = bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
     cpu.registers.SP = Register(u16(cpu.registers.SP) + 2)
 }
 
 cpu_reti :: proc(cpu: ^Cpu, opcode: u8)  {
-    cpu.registers.PC.low = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP))
-    cpu.registers.PC.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP) + 1)
+    cpu.registers.PC.low = bus_read(cpu.bus^, u16(cpu.registers.SP))
+    cpu.registers.PC.high = bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
     cpu.registers.SP = Register(u16(cpu.registers.SP) + 2)
     cpu.ime = true
 }
@@ -106,8 +106,8 @@ cpu_reti :: proc(cpu: ^Cpu, opcode: u8)  {
 cpu_ret_on_condition :: proc(cpu: ^Cpu, opcode: u8)  {
     condition := extract_condition(opcode)
     if is_condition_true(cpu.registers, condition) {
-        cpu.registers.PC.low = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP))
-        cpu.registers.PC.high = memory_mapper_read(cpu.memory_mapper^, u16(cpu.registers.SP) + 1)
+        cpu.registers.PC.low = bus_read(cpu.bus^, u16(cpu.registers.SP))
+        cpu.registers.PC.high = bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
         cpu.registers.SP = Register(u16(cpu.registers.SP) + 2)
     }
 }
@@ -117,8 +117,8 @@ cpu_rst :: proc(cpu: ^Cpu, opcode: u8)  {
     t := extract_bits_5_4_3(opcode)
     P := t * 8
     pc := Register(u16(cpu.registers.PC))
-    memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 1, pc.high)
-    memory_mapper_write(cpu.memory_mapper, u16(cpu.registers.SP) - 2, pc.low)
+    bus_write(cpu.bus, u16(cpu.registers.SP) - 1, pc.high)
+    bus_write(cpu.bus, u16(cpu.registers.SP) - 2, pc.low)
     cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
     cpu.registers.PC.high = 0
     cpu.registers.PC.low = P

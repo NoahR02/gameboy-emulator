@@ -44,7 +44,7 @@ layer_delete :: proc(self: ^Layer) {
 
 Ppu :: struct {
     cycles: uint,
-    memory_mapper: ^Memory_Mapper,
+    bus: ^Bus,
 
     tiles: Layer,
     // Tile Map 1 $9800-$9BFF
@@ -74,18 +74,18 @@ ppu_destroy :: proc(self: ^Ppu) {
 }
 
 ppu_step :: proc(self: ^Ppu) {
-    memory_mapper := self.memory_mapper
+    bus := self.bus
 
-    lcd_control := transmute(Lcd_Control_Register) memory_mapper_read(memory_mapper^, LCDC)
-    ly := memory_mapper_read(memory_mapper^, LY)
-    lcd_status := transmute(Lcd_Status_Register)memory_mapper_read(memory_mapper^, STAT)
-    interrupts_flag := transmute(Interrupt_Set)memory_mapper_read(memory_mapper^, INTERRUPTS_FLAG)
+    lcd_control := transmute(Lcd_Control_Register) bus_read(bus^, LCDC)
+    ly := bus_read(bus^, LY)
+    lcd_status := transmute(Lcd_Status_Register)bus_read(bus^, STAT)
+    interrupts_flag := transmute(Interrupt_Set)bus_read(bus^, INTERRUPTS_FLAG)
 
     if .LCD_Display_Enable not_in lcd_control {
-        memory_mapper_write(memory_mapper, LY, 0)
+        bus_write(bus, LY, 0)
         ly = 0
 
-        if byte(ly) == memory_mapper_read(memory_mapper^, LYC) {
+        if byte(ly) == bus_read(bus^, LYC) {
             lcd_status.lcy_ly_equality = true
             interrupts_flag += {.LCD}
         } else {
@@ -99,8 +99,8 @@ ppu_step :: proc(self: ^Ppu) {
         lcd_status.v_blank_interrupt = false
         lcd_status.oam_interrupt = false
 
-        memory_mapper_write(memory_mapper, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
-        memory_mapper_write(memory_mapper, STAT, transmute(byte)lcd_status)
+        bus_write(bus, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
+        bus_write(bus, STAT, transmute(byte)lcd_status)
         return
     }
 
@@ -112,11 +112,11 @@ ppu_step :: proc(self: ^Ppu) {
         ly += 1
         if ly > 153 {
             // Go back to line 0.
-            memory_mapper_write(memory_mapper, LY, 0)
+            bus_write(bus, LY, 0)
             ly = 0
         } else {
             // Advance to the next line.
-            memory_mapper_write(memory_mapper, LY, ly)
+            bus_write(bus, LY, ly)
         }
 
         if ly == 144 {
@@ -149,15 +149,15 @@ ppu_step :: proc(self: ^Ppu) {
         lcd_status.h_blank_interrupt = false
     }
 
-    if byte(ly) == memory_mapper_read(memory_mapper^, LYC) {
+    if byte(ly) == bus_read(bus^, LYC) {
         lcd_status.lcy_ly_equality = true
         interrupts_flag += {.LCD}
     } else {
         lcd_status.lcy_ly_equality = false
     }
     lcd_status.lcy_ly_equality_read_only = lcd_status.lcy_ly_equality
-    memory_mapper_write(memory_mapper, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
-    memory_mapper_write(memory_mapper, STAT, transmute(byte)lcd_status)
+    bus_write(bus, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
+    bus_write(bus, STAT, transmute(byte)lcd_status)
 }
 
 Tile_Fetch_Mode :: enum {
@@ -167,14 +167,14 @@ Tile_Fetch_Mode :: enum {
 }
 
 ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: Tile_Fetch_Mode = .Default_Behavior) -> (tile_data: [8 * 8 * 4]u8) {
-    memory_mapper := self.memory_mapper
+    bus := self.bus
     tile_row: u16 = 0
 
     row_start: u16
 
     switch force_tile_fetch_method {
         case .Default_Behavior: {
-            lcd_control := transmute(Lcd_Control_Register) memory_mapper_read(memory_mapper^, LCDC)
+            lcd_control := transmute(Lcd_Control_Register) bus_read(bus^, LCDC)
             // If bit 4 in LCDC is set, use the 8000 method, otherwise use the 8800 method.
             if .BG_Window_Tile_Data_Select in lcd_control {
                 row_start = 0x8000 + 16 * u16(tile_number)
@@ -193,8 +193,8 @@ ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: 
     for row: u16 = row_start; row < row_start + 16; row += 2 {
 
         // Get the row pixels.
-        byte_1 := memory_mapper_read(memory_mapper^, row)
-        byte_2 := memory_mapper_read(memory_mapper^, row + 1)
+        byte_1 := bus_read(bus^, row)
+        byte_2 := bus_read(bus^, row + 1)
 
         for bit_pos in 0..=7 {
             // 2 bits per pixel.
@@ -278,7 +278,7 @@ ppu_fill_tile_map_1 :: proc(self: ^Ppu) {
 
     // Tile Map 1 $9800-$9BFF
     for tile_map_index_address in 0x9800..=0x9BFF {
-        tile_map_index := memory_mapper_read(self.memory_mapper^, u16(tile_map_index_address))
+        tile_map_index := bus_read(self.bus^, u16(tile_map_index_address))
         next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.tile_map_1, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column)
         tile_framebuffer_row = next_row
         tile_framebuffer_column = next_column
@@ -291,7 +291,7 @@ ppu_fill_tile_map_2 :: proc(self: ^Ppu) {
 
     // Tile Map 1 $9C00-$9FFF
     for tile_map_index_address in 0x9C00..=0x9FFF {
-        tile_map_index := memory_mapper_read(self.memory_mapper^, u16(tile_map_index_address))
+        tile_map_index := bus_read(self.bus^, u16(tile_map_index_address))
         next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.tile_map_2, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column)
         tile_framebuffer_row = next_row
         tile_framebuffer_column = next_column
@@ -303,7 +303,7 @@ ppu_fill_oam_map :: proc(self: ^Ppu) {
     tile_framebuffer_column := u32(0)
 
     for sprite_index := 0; sprite_index < 159; sprite_index += 4 {
-        tile_map_index := memory_mapper_read(self.memory_mapper^, u16(0xFE00 + sprite_index + 2))
+        tile_map_index := bus_read(self.bus^, u16(0xFE00 + sprite_index + 2))
         // Sprites always use the 8000 method.
         next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.oam_map, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column, ._8000_Only)
         tile_framebuffer_row = next_row

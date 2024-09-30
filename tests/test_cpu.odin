@@ -38,7 +38,7 @@ test_cpu :: proc(t: ^testing.T) {
     for test in tests {
         gb_state := gb_state_make()
         defer gb_state_delete(&gb_state)
-        connect_devices(&gb_state)
+        bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer)
         
         rom, rom_read_success := os.read_entire_file(test)
         if !rom_read_success {
@@ -53,7 +53,7 @@ test_cpu :: proc(t: ^testing.T) {
             defer delete_dynamic_array(blargg_debug_output)
         }
         for int(gb_state.cpu.registers.PC) < 0xFFFF {
-            gameboy_step(&gb_state)
+            gameboy_step(&gb_state, &window)
 
             when ODIN_TEST {
                 debug_output := strings.clone_from_bytes(blargg_debug_output[:], context.temp_allocator)

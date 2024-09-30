@@ -29,9 +29,9 @@ gameboy_doctor_print_debug_state :: proc(gb_state: gameboy.Gb_State) {
         cpu.registers.HL.high, cpu.registers.HL.low,
         u16(cpu.registers.SP),
         u16(cpu.registers.PC),
-        memory_mapper_read(memory_mapper, u16(cpu.registers.PC)),
-        memory_mapper_read(memory_mapper, u16(cpu.registers.PC) + 1),
-        memory_mapper_read(memory_mapper, u16(cpu.registers.PC) + 2),
-        memory_mapper_read(memory_mapper, u16(cpu.registers.PC) + 3),
+        bus_read(bus, u16(cpu.registers.PC)),
+        bus_read(bus, u16(cpu.registers.PC) + 1),
+        bus_read(bus, u16(cpu.registers.PC) + 2),
+        bus_read(bus, u16(cpu.registers.PC) + 3),
     )
 }

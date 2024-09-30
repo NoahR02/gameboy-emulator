@@ -8,7 +8,7 @@ Gb_State :: struct {
     cpu: Cpu,
     ppu: Ppu,
     timer: Timer,
-    memory_mapper: Memory_Mapper,
+    bus: Bus,
     current_cycle: uint,
 }
 
@@ -16,6 +16,7 @@ import "core:log"
 import "core:os"
 import gl "vendor:OpenGL"
 import im "../odin-imgui"
+import "vendor:glfw"
 
 GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK :: 1_048_576
 GAMEBOY_CPU_SPEED :: GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK * 4
@@ -30,35 +31,63 @@ gameboy_configure_startup_values_after_the_boot_rom :: proc(gb_state: ^Gb_State)
     gb_state.cpu.registers.HL = Register(0x014d)
     gb_state.cpu.registers.SP = Register(0xfffe)
     gb_state.cpu.registers.PC = Register(0x0100)
-    memory_mapper_write(&gb_state.memory_mapper, 0xFF44, 0x90)
-    gb_state.memory_mapper._io_ram[DIV-0xFF00] = 0x18
-    memory_mapper_write(&gb_state.memory_mapper, TAC, 0xf8)
-    memory_mapper_write(&gb_state.memory_mapper, INTERRUPTS_FLAG, 0xe1)
-    memory_mapper_write(&gb_state.memory_mapper, INTERRUPTS_ENABLED, 0x00)
+    bus_write(&gb_state.bus, 0xFF44, 0x90)
+    gb_state.bus._io_ram[DIV-0xFF00] = 0x18
+    bus_write(&gb_state.bus, TAC, 0xf8)
+    bus_write(&gb_state.bus, INTERRUPTS_FLAG, 0xe1)
+    bus_write(&gb_state.bus, INTERRUPTS_ENABLED, 0x00)
 
     // LCD
-    memory_mapper_write(&gb_state.memory_mapper, LY, 0x91)
-    memory_mapper_write(&gb_state.memory_mapper, LCDC, 0x91)
-    memory_mapper_write(&gb_state.memory_mapper, STAT, 0x81)
-    memory_mapper_write(&gb_state.memory_mapper, LCDC, 0x91)
-    memory_mapper_write(&gb_state.memory_mapper, 0xFF46, 0xFF)
+    bus_write(&gb_state.bus, LY, 0x91)
+    bus_write(&gb_state.bus, LCDC, 0x91)
+    bus_write(&gb_state.bus, STAT, 0x81)
+    bus_write(&gb_state.bus, LCDC, 0x91)
+    bus_write(&gb_state.bus, 0xFF46, 0xFF)
+    bus_write(&gb_state.bus, P1_JOYPAD, 0xCF)
 }
 
 gameboy_install_rom :: proc(gb_state: ^Gb_State, rom: []byte) {
     for address := 0; address < len(rom); address += 1 {
-        memory_mapper_write(&gb_state.memory_mapper, u16(address), rom[address])
+        bus_write(&gb_state.bus, u16(address), rom[address])
     }
 }
 
-gameboy_step :: proc(gb_state: ^Gb_State) {
+gameboy_step :: proc(gb_state: ^Gb_State, window: ^Window) {
     old_cycle_count := gb_state.current_cycle
     gb_state.current_cycle += cpu_step(&gb_state.cpu)
 
     // Account for how long a DMA transfer takes.
-    if gb_state.memory_mapper.dma_transfer_requested {
-        gb_state.memory_mapper.dma_transfer_requested = false
+    if gb_state.bus.dma_transfer_requested {
+        gb_state.bus.dma_transfer_requested = false
         gb_state.current_cycle += 160
     }
+
+    // Remove this. Just for testing.
+    // ----
+    w_key_state := glfw.GetKey(window.handle, glfw.KEY_W)
+    a_key_state := glfw.GetKey(window.handle, glfw.KEY_A)
+    s_key_state := glfw.GetKey(window.handle, glfw.KEY_S)
+    d_key_state := glfw.GetKey(window.handle, glfw.KEY_D)
+
+    p1_joypad := gb_state.bus._io_ram[P1_JOYPAD-0xFF00]
+    select_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
+    dpad_buttons_enabled := (p1_joypad & 0b00_01_0000) == 0
+
+    if (w_key_state == glfw.PRESS)
+    {
+        if select_buttons_enabled {
+            select_buttons = select_buttons & 0b1111_0111
+        } else if dpad_buttons_enabled {
+            dpad_buttons = dpad_buttons & 0b1111_0111
+        }
+    } else if(w_key_state == glfw.RELEASE) {
+        if select_buttons_enabled {
+            select_buttons = select_buttons | 0b0000_1000
+        } else if dpad_buttons_enabled {
+            dpad_buttons = dpad_buttons  | 0b0000_1000
+        }
+    }
+    // ----
 
     gb_state.current_cycle += interrupt_controller_handle_interrupts(&gb_state.cpu)
 
@@ -78,14 +107,6 @@ gb_state_delete :: proc(self: ^Gb_State) {
     ppu_destroy(&self.ppu)
 }
 
-connect_devices :: proc(gb_state: ^Gb_State) {
-    // This is a bit nasty because it will create circular references, but most of the time each device cannot operate in isolation.
-    // TODO: Rework how the devices communicate.
-    gb_state.cpu.memory_mapper = &gb_state.memory_mapper
-    gb_state.ppu.memory_mapper = &gb_state.memory_mapper
-    gb_state.timer.memory_mapper = &gb_state.memory_mapper
-}
-
 main :: proc() {
     windowing_system_startup()
     defer windowing_system_clean_up()
@@ -95,9 +116,10 @@ main :: proc() {
 
     gb_state := gb_state_make()
     defer gb_state_delete(&gb_state)
-    connect_devices(&gb_state)
+    bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer)
 
     rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
+    // rom, rom_open_success := os.read_entire_file_from_filename("assets/Tetris.gb")
     if !rom_open_success {
         panic("Failed to open the rom file!")
     }
@@ -113,7 +135,7 @@ main :: proc() {
        window_poll_for_events()
 
        for _ in 0..=offset {
-           gameboy_step(&gb_state)
+           gameboy_step(&gb_state, &window)
        }
 
        ppu_fill_tiles(&gb_state.ppu)
