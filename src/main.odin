@@ -10,6 +10,7 @@ Gb_State :: struct {
     timer: Timer,
     bus: Bus,
     current_cycle: uint,
+    io: Io,
 }
 
 import "core:log"
@@ -18,10 +19,13 @@ import gl "vendor:OpenGL"
 import im "../odin-imgui"
 import "vendor:glfw"
 
+import "base:runtime"
 GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK :: 1_048_576
 GAMEBOY_CPU_SPEED :: GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK * 4
-GAMEBOY_SCREEN_WIDTH :: 128
-GAMEBOY_SCREEN_HEIGHT :: 144 * 2
+GAMEBOY_SCREEN_WIDTH :: 160
+GAMEBOY_SCREEN_HEIGHT :: 144
+
+key_states: [512]i32
 
 gameboy_configure_startup_values_after_the_boot_rom :: proc(gb_state: ^Gb_State) {
     // The state after executing the boot rom
@@ -62,32 +66,54 @@ gameboy_step :: proc(gb_state: ^Gb_State, window: ^Window) {
         gb_state.current_cycle += 160
     }
 
-    // Remove this. Just for testing.
-    // ----
-    w_key_state := glfw.GetKey(window.handle, glfw.KEY_W)
-    a_key_state := glfw.GetKey(window.handle, glfw.KEY_A)
-    s_key_state := glfw.GetKey(window.handle, glfw.KEY_S)
-    d_key_state := glfw.GetKey(window.handle, glfw.KEY_D)
-
-    p1_joypad := gb_state.bus._io_ram[P1_JOYPAD-0xFF00]
-    select_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
+    p1_joypad := gb_state.bus._io_ram[P1_JOYPAD-P1_JOYPAD]
+    action_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
     dpad_buttons_enabled := (p1_joypad & 0b00_01_0000) == 0
 
-    if (w_key_state == glfw.PRESS)
-    {
-        if select_buttons_enabled {
-            select_buttons = select_buttons & 0b1111_0111
-        } else if dpad_buttons_enabled {
-            dpad_buttons = dpad_buttons & 0b1111_0111
-        }
-    } else if(w_key_state == glfw.RELEASE) {
-        if select_buttons_enabled {
-            select_buttons = select_buttons | 0b0000_1000
-        } else if dpad_buttons_enabled {
-            dpad_buttons = dpad_buttons  | 0b0000_1000
+    directional_keys_to_glfw_key := map[Directional_Buttons] i32 {
+        .Up = glfw.KEY_W,
+        .Left = glfw.KEY_A,
+        .Down = glfw.KEY_S,
+        .Right = glfw.KEY_D
+    }
+    defer delete(directional_keys_to_glfw_key)
+
+    action_keys_to_glfw_key := map[Action_Buttons] i32 {
+        .Start = glfw.KEY_ENTER,
+        .Select = glfw.KEY_LEFT_SHIFT,
+        .A = glfw.KEY_Z,
+        .B = glfw.KEY_K
+    }
+    defer delete(action_keys_to_glfw_key)
+
+    for directional_key in directional_keys_to_glfw_key {
+        directional_key_state := key_states[directional_keys_to_glfw_key[directional_key]]
+        
+        if directional_key_state == glfw.PRESS || directional_key_state == glfw.REPEAT
+        {
+            interrupts_flag := transmute(Interrupt_Set)bus_read(gb_state.bus, INTERRUPTS_FLAG)
+            interrupts_flag += {.Joypad}
+            bus_write(&gb_state.bus, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
+            
+            gb_state.io.direction_buttons += { directional_key } 
+        } else if(directional_key_state == glfw.RELEASE) {
+            gb_state.io.direction_buttons -= { directional_key} 
         }
     }
-    // ----
+
+    for action_key in action_keys_to_glfw_key {
+        action_key_state := key_states[action_keys_to_glfw_key[action_key]]
+
+        if action_key_state == glfw.PRESS || action_key_state == glfw.REPEAT
+        {
+            interrupts_flag := transmute(Interrupt_Set)bus_read(gb_state.bus, INTERRUPTS_FLAG)
+            interrupts_flag += {.Joypad}
+            bus_write(&gb_state.bus, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
+            gb_state.io.action_buttons += { action_key } 
+        } else if action_key_state == glfw.RELEASE {
+            gb_state.io.action_buttons -= { action_key} 
+        }
+    }
 
     gb_state.current_cycle += interrupt_controller_handle_interrupts(&gb_state.cpu)
 
@@ -116,13 +142,19 @@ main :: proc() {
 
     gb_state := gb_state_make()
     defer gb_state_delete(&gb_state)
-    bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer)
+    bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer, &gb_state.io)
 
     rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
     // rom, rom_open_success := os.read_entire_file_from_filename("assets/Tetris.gb")
     if !rom_open_success {
         panic("Failed to open the rom file!")
     }
+    
+    glfw.SetKeyCallback(window.handle, proc "c" (gb_state: glfw.WindowHandle, key, scancode, action, mods: i32) {
+        // context = runtime.default_context()
+        // fmt.println("...")
+        key_states[key] = action
+    })
 
    gameboy_install_rom(&gb_state, rom)
    gameboy_configure_startup_values_after_the_boot_rom(&gb_state)
@@ -131,48 +163,59 @@ main :: proc() {
 
    offset := int(GAMEBOY_CPU_SPEED_WITH_MEMORY_BOTTLE_NECK / 60)
 
+   last_time := glfw.GetTime()
+   timer := f64(0)
+   fixed_fps := 60.0
+
    for !window_should_close(window) {
+       now := glfw.GetTime()
+       delta := now - last_time
+       last_time = now
+       timer += delta
+
        window_poll_for_events()
 
        for _ in 0..=offset {
            gameboy_step(&gb_state, &window)
        }
 
-       ppu_fill_tiles(&gb_state.ppu)
-       ppu_fill_tile_map_1(&gb_state.ppu)
-       ppu_fill_tile_map_2(&gb_state.ppu)
-       ppu_fill_oam_map(&gb_state.ppu)
+       if timer >= 1.0 / fixed_fps {
+        timer = 0
+        ppu_fill_tiles(&gb_state.ppu)
+        ppu_fill_tile_map_1(&gb_state.ppu)
+        ppu_fill_tile_map_2(&gb_state.ppu)
+        ppu_fill_oam_map(&gb_state.ppu)
 
-       layer_fill_texture(&gb_state.ppu.tiles)
-       layer_fill_texture(&gb_state.ppu.tile_map_1)
-       layer_fill_texture(&gb_state.ppu.tile_map_2)
-       layer_fill_texture(&gb_state.ppu.oam_map)
-
-       imgui_preprare_frame()
-
-       im.Begin("Game", &p_open_default)
-       im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
-       im.End()
-
-       im.BeginTabBar(cstring("Debug Tab Container"))
-       if im.BeginTabItem("Tile Map", &p_open_default) {
-           im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
-           im.EndTabItem()
+        imgui_preprare_frame()
+ 
+        im.Begin("Game", &p_open_default)
+        layer_fill_texture(&gb_state.ppu.tile_map_1)
+        im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+        im.End()
+ 
+        im.BeginTabBar(cstring("Debug Tab Container"))
+        if im.BeginTabItem("Tile Map", &p_open_default) {
+            layer_fill_texture(&gb_state.ppu.tiles)
+            im.Image(rawptr(uintptr(gb_state.ppu.tiles.texture.handle)), im.Vec2{f32(gb_state.ppu.tiles.width) * 4, f32(gb_state.ppu.tiles.height) * 4})
+            im.EndTabItem()
+        }
+ 
+        if im.BeginTabItem("Background Layer", &p_open_default) {
+            layer_fill_texture(&gb_state.ppu.tile_map_2)
+            im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+            im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
+            im.EndTabItem()
+        }
+ 
+        if im.BeginTabItem("OAM / Sprites Layer", &p_open_default) {
+            layer_fill_texture(&gb_state.ppu.oam_map)
+            im.Image(rawptr(uintptr(gb_state.ppu.oam_map.texture.handle)), im.Vec2{f32(gb_state.ppu.oam_map.width) * 8, f32(gb_state.ppu.oam_map.height) * 8})
+            im.EndTabItem()
+        }
+        im.EndTabBar()
+ 
+        imgui_assemble_and_render_frame(window)
+        window_swap_buffers(window)
        }
-
-       if im.BeginTabItem("Background Layer", &p_open_default) {
-           im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
-           im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
-           im.EndTabItem()
-       }
-
-       if im.BeginTabItem("OAM / Sprites Layer", &p_open_default) {
-           im.Image(rawptr(uintptr(gb_state.ppu.oam_map.texture.handle)), im.Vec2{f32(gb_state.ppu.oam_map.width) * 8, f32(gb_state.ppu.oam_map.height) * 8})
-           im.EndTabItem()
-       }
-       im.EndTabBar()
-
-       imgui_assemble_and_render_frame(window)
-       window_swap_buffers(window)
    }
 }

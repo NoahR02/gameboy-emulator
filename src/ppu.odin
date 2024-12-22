@@ -55,7 +55,8 @@ Ppu :: struct {
 }
 
 ppu_make :: proc() -> (self: Ppu) {
-    tiles := layer_make(GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT, 16)
+    
+    tiles := layer_make(GAMEBOY_SCREEN_WIDTH - 32, GAMEBOY_SCREEN_HEIGHT * 2, 16)
     tile_map_1 := layer_make(256, 256, 32)
     tile_map_2 := layer_make(256, 256, 32)
     oam_map := layer_make(64, 64, 8)

@@ -9,14 +9,10 @@ when ODIN_TEST {
 
 
 Memory :: struct {
-    // [0x0000, 0x8000)
-    _rom:           [32 * KILOBYTE]byte, // 0x8000
-    // [0x8000, 0x9FFF]
-    _video_ram:     [8 * KILOBYTE]byte,  // 0x2000
-    // [0xA000, 0xBFFF]
-    _external_ram:  [8 * KILOBYTE]byte,  // 0x2000
-    // [0xC000, 0xDFFF]
-    _work_ram:      [8 * KILOBYTE]byte,  // 0x2000
+    _rom:           [32 * KILOBYTE]byte,
+    _video_ram:     [8 * KILOBYTE]byte,
+    _external_ram:  [8 * KILOBYTE]byte,
+    _work_ram:      [8 * KILOBYTE]byte,
     _oam_ram:       [160]byte,
     _io_ram:        [256]byte,
     _high_ram:      [128]byte,
@@ -32,19 +28,16 @@ Bus :: struct {
     cpu: ^Cpu,
     ppu: ^Ppu,
     timer: ^Timer,
+    io: ^Io,
 }
 
-P1_JOYPAD :: 0xFF00
-
-select_buttons: byte
-dpad_buttons: byte
-
-bus_connect_devices :: proc(self: ^Bus, cpu: ^Cpu, ppu: ^Ppu, timer: ^Timer) {
+bus_connect_devices :: proc(self: ^Bus, cpu: ^Cpu, ppu: ^Ppu, timer: ^Timer, io: ^Io) {
     // This is a bit nasty because it will create circular references, but most of the time each device cannot operate in isolation.
     // TODO: Rework how the devices communicate.
     self.cpu = cpu
     self.ppu = ppu
     self.timer = timer
+    self.io = io
 
     cpu.bus = self
     ppu.bus = self
@@ -56,14 +49,42 @@ bus_read :: proc(bus: Bus, address: u16) -> u8 {
     // TODO: Implement the joypad.
     // Turn off joypad buttons. 1 = Off.
     if address == P1_JOYPAD {
-        p1_joypad := bus._io_ram[P1_JOYPAD-0xFF00]
-        select_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
+        p1_joypad := bus._io_ram[P1_JOYPAD - P1_JOYPAD]
+
+        action_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
         dpad_buttons_enabled := (p1_joypad & 0b00_01_0000) == 0
+
         // fmt.println(select_buttons_enabled, dpad_buttons_enabled)
-        if select_buttons_enabled {
-            return (p1_joypad & 0xF0) | select_buttons
-        } else if dpad_buttons_enabled {
-            return (p1_joypad & 0xF0) | select_buttons
+        if dpad_buttons_enabled {
+            
+        direction_buttons_byte: byte = 0
+        for directional_button in Directional_Buttons {
+            bit_offset: = Directional_Buttons_Bit_Offsets[directional_button]
+            bit_to_set: u8 = 0x01 << bit_offset
+
+            if directional_button in bus.io.direction_buttons {
+                // Flip the bit.
+                bit_to_set = bit_to_set ~ bit_to_set
+            }
+
+            direction_buttons_byte |= bit_to_set
+        }
+
+            return p1_joypad | direction_buttons_byte
+        } else if action_buttons_enabled {
+            action_buttons_byte: byte = 0
+            for action_button in Action_Buttons {
+                bit_offset: = Action_Buttons_Bit_Offsets[action_button]
+                bit_to_set: u8 = 0x01 << bit_offset
+    
+                if action_button in bus.io.action_buttons {
+                  // Flip the bit.
+                  bit_to_set = bit_to_set ~ bit_to_set
+                }
+    
+                action_buttons_byte = action_buttons_byte | bit_to_set
+            }
+            return p1_joypad | action_buttons_byte
         } else {
             // When neither the select buttons or the dpad are enabled, set every bit in the lower nibble.
             return p1_joypad | 0x0F
@@ -141,10 +162,12 @@ bus_write :: proc(bus: ^Bus, address: u16, data: u8) {
             bus._io_ram[address-0xFF00] = 0
         }
 
-        case address >= 0xFF00 && address <= 0xFF7F: {
+        case address >= P1_JOYPAD && address <= 0xFF7F: {
             if address == P1_JOYPAD {
+                
                 // The lower nibble is read-only.
-                bus._io_ram[address-0xFF00] = (data & 0xF0) | (bus._io_ram[address-0xFF00] & 0x0F)
+                bus._io_ram[address-P1_JOYPAD] = data & 0xF0
+
                 return
             }
 
