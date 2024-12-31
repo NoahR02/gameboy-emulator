@@ -2,7 +2,7 @@ package gameboy
 
 import "core:math/bits"
 
-cpu_rlca :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_rlca :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     // Rotate bit 7 into carry flag
     carry := u16(cpu.registers.AF.high) << 1 > 0xFF
     set_carry_flag(&cpu.registers, carry)
@@ -16,7 +16,7 @@ cpu_rlca :: proc(cpu: ^Cpu, opcode: u8)  {
 }
 
 
-cpu_rla :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_rla :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     old_carry_flag := u8(is_carry_flag_set(cpu.registers))
     
     // Rotate bit 7 into carry flag
@@ -35,7 +35,7 @@ cpu_rla :: proc(cpu: ^Cpu, opcode: u8)  {
 }
 
 
-cpu_rrca :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_rrca :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     // Bit 0 -> Carry Flag
     new_carry_flag_from_bit_0 := cpu.registers.AF.high & 0x01
     set_carry_flag(&cpu.registers, bool(new_carry_flag_from_bit_0))
@@ -49,7 +49,7 @@ cpu_rrca :: proc(cpu: ^Cpu, opcode: u8)  {
 }
 
 
-cpu_rra :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_rra :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     old_carry_flag := u8(is_carry_flag_set(cpu.registers)) << 7
 
     // Bit 0 -> Carry Flag
@@ -69,7 +69,7 @@ cpu_rra :: proc(cpu: ^Cpu, opcode: u8)  {
 
 
 // Same as rlca, but for any 8-bit register.
-cpu_rlc :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_rlc :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     data: byte
 
@@ -105,7 +105,7 @@ cpu_rlc :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 
 
 // Same as rla, but for any 8-bit register.
-cpu_rl :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_rl :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     old_carry_flag := u8(is_carry_flag_set(cpu.registers))
     data: byte
@@ -144,7 +144,7 @@ cpu_rl :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 
 
 // Same as rrca, but for any 8-bit register.
-cpu_rrc :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_rrc :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     data: byte
 
@@ -179,7 +179,7 @@ cpu_rrc :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 
 
 // Same as rra, but for any 8-bit register.
-cpu_rr :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_rr :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     old_carry_flag := u8(is_carry_flag_set(cpu.registers)) << 7
     data: byte
@@ -217,7 +217,7 @@ cpu_rr :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 }
 
 
-cpu_sla :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_sla :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     data: byte
 
@@ -250,7 +250,7 @@ cpu_sla :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     set_half_carry_flag(&cpu.registers, false)
 }
 
-cpu_sra :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_sra :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     data: byte
 
@@ -286,7 +286,7 @@ cpu_sra :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     set_half_carry_flag(&cpu.registers, false)
 }
 
-cpu_srl :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_srl :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     data: byte
 
@@ -320,7 +320,7 @@ cpu_srl :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 }
 
 
-cpu_swap :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_swap :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode_data)
     data: byte
 
@@ -351,7 +351,7 @@ cpu_swap :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 }
 
 
-cpu_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     bit := extract_dst_register(opcode_data)
     register_to_fetch_bit_from := extract_src_register(opcode_data)
 
@@ -370,7 +370,7 @@ cpu_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 }
 
 
-cpu_set :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_set :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     bit := extract_dst_register(opcode_data)
     register := extract_src_register(opcode_data)
 
@@ -398,7 +398,7 @@ cpu_set :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 }
 
 
-cpu_res :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_res :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     bit := extract_dst_register(opcode_data)
     register := extract_src_register(opcode_data)
 

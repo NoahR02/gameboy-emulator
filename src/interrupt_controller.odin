@@ -15,7 +15,7 @@ INTERRUPTS_FLAG :: 0xFF0F
 // IE
 INTERRUPTS_ENABLED :: 0xFFFF
 
-interrupt_controller_handle_interrupts :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
+interrupt_controller_handle_interrupts :: #force_inline proc(cpu: ^Cpu) -> (m_cycles: uint) {
     interrupts_enabled := transmute(Interrupt_Set)bus_read(cpu.bus^, INTERRUPTS_ENABLED)
     interrupts_flag := transmute(Interrupt_Set)bus_read(cpu.bus^, INTERRUPTS_FLAG)
     did_interrupt_occur := false
@@ -36,7 +36,7 @@ interrupt_controller_handle_interrupts :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
 
     if cpu.ime {
 
-        push_pc :: proc(cpu: ^Cpu) {
+        push_pc :: #force_inline proc(cpu: ^Cpu) {
             bus_write(cpu.bus, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
             bus_write(cpu.bus, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
             cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)

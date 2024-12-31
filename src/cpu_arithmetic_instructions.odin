@@ -5,7 +5,8 @@ import "core:math/bits"
 
 // 8-bit START
 
-cpu_add_8_bit :: proc(cpu: ^Cpu, opcode: u8, add_carry_flag: bool = false)  {
+
+cpu_add_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8, add_carry_flag: bool = false)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -30,7 +31,7 @@ cpu_add_8_bit :: proc(cpu: ^Cpu, opcode: u8, add_carry_flag: bool = false)  {
     )
 }
 
-cpu_add_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8, add_carry_flag: bool = false)  {
+cpu_add_immediate :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8, add_carry_flag: bool = false)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte = opcode_data
 
@@ -48,7 +49,7 @@ cpu_add_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8, add_carry_flag
     )
 }
 
-cpu_sub_8_bit :: proc(cpu: ^Cpu, opcode: u8, sub_carry_flag: bool = false)  {
+cpu_sub_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8, sub_carry_flag: bool = false)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -73,7 +74,7 @@ cpu_sub_8_bit :: proc(cpu: ^Cpu, opcode: u8, sub_carry_flag: bool = false)  {
     )
 }
 
-cpu_sub_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8, sub_carry_flag: bool = false)  {
+cpu_sub_immediate :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8, sub_carry_flag: bool = false)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte = opcode_data
     difference: byte = a - b - byte(sub_carry_flag)
@@ -90,7 +91,7 @@ cpu_sub_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8, sub_carry_flag
     )
 }
 
-cpu_inc_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_inc_register_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register(opcode)
 
     a: byte
@@ -119,7 +120,7 @@ cpu_inc_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     }
 }
 
-cpu_dec_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_dec_register_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register(opcode)
 
     a: byte
@@ -148,7 +149,7 @@ cpu_dec_register_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     }
 }
 
-cpu_xor_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_xor_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     
     src := extract_src_register(opcode)
 
@@ -175,7 +176,7 @@ cpu_xor_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     )
 }
 
-cpu_xor_immediate:: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_xor_immediate :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte = opcode_data
 
@@ -194,7 +195,7 @@ cpu_xor_immediate:: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     return
 }
 
-cpu_cp_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_cp_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -214,7 +215,7 @@ cpu_cp_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     set_carry_flag(&cpu.registers, compute_carry_flag_by_8_bit_subtraction(cpu.registers, a, b))
 }
 
-cpu_cp_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_cp_immediate :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
     b: byte = opcode_data
 
@@ -226,7 +227,7 @@ cpu_cp_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     set_carry_flag(&cpu.registers, compute_carry_flag_by_8_bit_subtraction(cpu.registers, a, b))
 }
 
-cpu_and_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_and_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -251,7 +252,7 @@ cpu_and_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     )
 }
 
-cpu_and_immediate_8_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_and_immediate_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -271,7 +272,7 @@ cpu_and_immediate_8_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     )
 }
 
-cpu_or_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_or_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -296,7 +297,7 @@ cpu_or_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     )
 }
 
-cpu_or_8_bit_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_or_8_bit_immediate :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     src := extract_src_register(opcode)
 
     a := get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX)
@@ -316,7 +317,7 @@ cpu_or_8_bit_immediate :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     )
 }
 
-cpu_daa :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_daa :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     number := u8(get_register_value_from_opcode_index(cpu.registers, OPCODE_REGISTER_A_INDEX))
     offset_value: byte = 0
 
@@ -348,19 +349,19 @@ cpu_daa :: proc(cpu: ^Cpu, opcode: u8)  {
     set_zero_flag(&cpu.registers, number == 0)
 }
 
-cpu_cpl :: proc(cpu: ^Cpu, opcode: u8) {
+cpu_cpl :: #force_inline proc(cpu: ^Cpu, opcode: u8) {
     cpu.registers.AF.high = ~cpu.registers.AF.high
     set_n_flag(&cpu.registers, true)
     set_half_carry_flag(&cpu.registers, true)
 }
 
-cpu_ccf :: proc(cpu: ^Cpu, opcode: u8) {
+cpu_ccf :: #force_inline proc(cpu: ^Cpu, opcode: u8) {
     set_n_flag(&cpu.registers, false)
     set_half_carry_flag(&cpu.registers, false)
     set_carry_flag(&cpu.registers, !is_carry_flag_set(cpu.registers))
 }
 
-cpu_scf :: proc(cpu: ^Cpu, opcode: u8) {
+cpu_scf :: #force_inline proc(cpu: ^Cpu, opcode: u8) {
     set_carry_flag(&cpu.registers, true)
     set_n_flag(&cpu.registers, false)
     set_half_carry_flag(&cpu.registers, false)
@@ -370,7 +371,7 @@ cpu_scf :: proc(cpu: ^Cpu, opcode: u8) {
 
 // 16-bit START
 
-cpu_add_immediate_into_sp :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_add_immediate_into_sp :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     set_zero_flag(&cpu.registers, false)
     set_n_flag(&cpu.registers, false)
     set_half_carry_flag(&cpu.registers, compute_half_carry_flag_by_8_bit_addition(cpu.registers, cpu.registers.SP.low, opcode_data))
@@ -379,7 +380,7 @@ cpu_add_immediate_into_sp :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     cpu.registers.SP = Register(u16(cpu.registers.SP) + u16(i8(opcode_data)))
 }
 
-cpu_add_16_bit_register_pairs :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_add_16_bit_register_pairs :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     src := extract_dst_register_pair(opcode)
 
     a := u16(cpu.registers.HL)
@@ -399,7 +400,7 @@ cpu_add_16_bit_register_pairs :: proc(cpu: ^Cpu, opcode: u8)  {
     cpu.registers.HL = Register(sum)
 }
 
-cpu_inc_register_pair_16_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_inc_register_pair_16_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register_pair(opcode)
 
     set_register_pair_value_from_opcode_index(
@@ -410,7 +411,7 @@ cpu_inc_register_pair_16_bit :: proc(cpu: ^Cpu, opcode: u8)  {
 }
 
 
-cpu_dec_register_pair_16_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_dec_register_pair_16_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register_pair(opcode)
 
     set_register_pair_value_from_opcode_index(

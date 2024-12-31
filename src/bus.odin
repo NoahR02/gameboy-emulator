@@ -44,7 +44,7 @@ bus_connect_devices :: proc(self: ^Bus, cpu: ^Cpu, ppu: ^Ppu, timer: ^Timer, io:
     timer.bus = self
 }
 
-bus_read :: proc(bus: Bus, address: u16) -> u8 {
+bus_read :: #force_inline proc(bus: Bus, address: u16) -> u8 {
 
     // TODO: Implement the joypad.
     // Turn off joypad buttons. 1 = Off.
@@ -129,7 +129,7 @@ bus_read :: proc(bus: Bus, address: u16) -> u8 {
 
 }
 
-bus_write :: proc(bus: ^Bus, address: u16, data: u8) {
+bus_write :: #force_inline proc(bus: ^Bus, address: u16, data: u8) {
 
     // TODO: Move this into a seperate file!
     // DMA

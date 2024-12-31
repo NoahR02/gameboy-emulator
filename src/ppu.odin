@@ -48,29 +48,29 @@ Ppu :: struct {
 
     tiles: Layer,
     // Tile Map 1 $9800-$9BFF
-    tile_map_1: Layer,
+    background_tile_map_1: Layer,
     // Tile Map 2 $9C00-$9FFF
-    tile_map_2: Layer,
+    background_tile_map_2: Layer,
     oam_map: Layer,
 }
 
 ppu_make :: proc() -> (self: Ppu) {
     
     tiles := layer_make(GAMEBOY_SCREEN_WIDTH - 32, GAMEBOY_SCREEN_HEIGHT * 2, 16)
-    tile_map_1 := layer_make(256, 256, 32)
-    tile_map_2 := layer_make(256, 256, 32)
+    background_tile_map_1 := layer_make(256, 256, 32)
+    background_tile_map_2 := layer_make(256, 256, 32)
     oam_map := layer_make(64, 64, 8)
     self.tiles = tiles
-    self.tile_map_1 = tile_map_1
-    self.tile_map_2 = tile_map_2
+    self.background_tile_map_1 = background_tile_map_1
+    self.background_tile_map_2 = background_tile_map_2
     self.oam_map = oam_map
     return
 }
 
 ppu_destroy :: proc(self: ^Ppu) {
     layer_delete(&self.tiles)
-    layer_delete(&self.tile_map_1)
-    layer_delete(&self.tile_map_2)
+    layer_delete(&self.background_tile_map_1)
+    layer_delete(&self.background_tile_map_2)
     layer_delete(&self.oam_map)
 }
 
@@ -134,6 +134,9 @@ ppu_step :: proc(self: ^Ppu) {
             lcd_status.oam_interrupt = true
             lcd_status.v_blank_interrupt = false
             lcd_status.h_blank_interrupt = false
+
+
+            
         }
     } else if self.cycles >= 369 * 4 {
         // Enter mode 0. HBlank.
@@ -207,7 +210,7 @@ ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: 
             pixel_color := Pixel_Color_Map[pixel_val]
 
             // Set the pixel color in our framebuffer.
-            pixel_x: u16 = u16(u16(7-bit_pos))
+            pixel_x: u16 = u16(7-bit_pos)
             pixel_y: u16 = tile_row
 
             pixel_offset := (8 * pixel_y + pixel_x) * 4
@@ -273,27 +276,27 @@ ppu_fill_tiles :: proc(self: ^Ppu) {
     }
 }
 
-ppu_fill_tile_map_1 :: proc(self: ^Ppu) {
+ppu_fill_background_tile_map_1 :: proc(self: ^Ppu) {
     tile_framebuffer_row := u32(0)
     tile_framebuffer_column := u32(0)
 
     // Tile Map 1 $9800-$9BFF
     for tile_map_index_address in 0x9800..=0x9BFF {
         tile_map_index := bus_read(self.bus^, u16(tile_map_index_address))
-        next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.tile_map_1, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column)
+        next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.background_tile_map_1, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column)
         tile_framebuffer_row = next_row
         tile_framebuffer_column = next_column
     }
 }
 
-ppu_fill_tile_map_2 :: proc(self: ^Ppu) {
+ppu_fill_background_tile_map_2 :: proc(self: ^Ppu) {
     tile_framebuffer_row := u32(0)
     tile_framebuffer_column := u32(0)
 
     // Tile Map 1 $9C00-$9FFF
     for tile_map_index_address in 0x9C00..=0x9FFF {
         tile_map_index := bus_read(self.bus^, u16(tile_map_index_address))
-        next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.tile_map_2, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column)
+        next_row, next_column := ppu_blit_tile_on_to_layer(self, &self.background_tile_map_2, u32(tile_map_index), tile_framebuffer_row, tile_framebuffer_column)
         tile_framebuffer_row = next_row
         tile_framebuffer_column = next_column
     }

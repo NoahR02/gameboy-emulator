@@ -11,7 +11,7 @@ Cpu :: struct {
     is_halted: bool,
 }
 
-cpu_step :: proc(cpu: ^Cpu) -> (m_cycles: uint) {
+cpu_step :: #force_inline proc(cpu: ^Cpu) -> (m_cycles: uint) {
 
     if cpu.is_halted {
         m_cycles = 1

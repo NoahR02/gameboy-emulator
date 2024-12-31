@@ -56,7 +56,7 @@ gameboy_install_rom :: proc(gb_state: ^Gb_State, rom: []byte) {
     }
 }
 
-gameboy_step :: proc(gb_state: ^Gb_State, window: ^Window) {
+gameboy_step :: #force_inline proc(gb_state: ^Gb_State, window: ^Window) {
     old_cycle_count := gb_state.current_cycle
     gb_state.current_cycle += cpu_step(&gb_state.cpu)
 
@@ -182,15 +182,15 @@ main :: proc() {
        if timer >= 1.0 / fixed_fps {
         timer = 0
         ppu_fill_tiles(&gb_state.ppu)
-        ppu_fill_tile_map_1(&gb_state.ppu)
-        ppu_fill_tile_map_2(&gb_state.ppu)
+        ppu_fill_background_tile_map_1(&gb_state.ppu)
+        ppu_fill_background_tile_map_2(&gb_state.ppu)
         ppu_fill_oam_map(&gb_state.ppu)
 
         imgui_preprare_frame()
  
         im.Begin("Game", &p_open_default)
-        layer_fill_texture(&gb_state.ppu.tile_map_1)
-        im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
+        layer_fill_texture(&gb_state.ppu.background_tile_map_1)
+        im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_1.width) * 2, f32(gb_state.ppu.background_tile_map_1.height) * 2})
         im.End()
  
         im.BeginTabBar(cstring("Debug Tab Container"))
@@ -201,9 +201,9 @@ main :: proc() {
         }
  
         if im.BeginTabItem("Background Layer", &p_open_default) {
-            layer_fill_texture(&gb_state.ppu.tile_map_2)
-            im.Image(rawptr(uintptr(gb_state.ppu.tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_1.width) * 2, f32(gb_state.ppu.tile_map_1.height) * 2})
-            im.Image(rawptr(uintptr(gb_state.ppu.tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.tile_map_2.width) * 2, f32(gb_state.ppu.tile_map_2.height) * 2})
+            layer_fill_texture(&gb_state.ppu.background_tile_map_2)
+            im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_1.width) * 2, f32(gb_state.ppu.background_tile_map_1.height) * 2})
+            im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_2.width) * 2, f32(gb_state.ppu.background_tile_map_2.height) * 2})
             im.EndTabItem()
         }
  

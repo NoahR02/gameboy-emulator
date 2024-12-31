@@ -39,7 +39,7 @@ extract_src_register :: extract_rightmost_3_bits
 extract_dst_register :: extract_bits_5_4_3
 extract_dst_register_pair :: extract_bits_5_4
 
-set_register_value_from_opcode_index :: proc(registers: ^Registers, opcode_index: u8, value: u8) {
+set_register_value_from_opcode_index :: #force_inline proc(registers: ^Registers, opcode_index: u8, value: u8) {
     switch opcode_index {
         case OPCODE_REGISTER_B_INDEX: registers.BC.high = value
         case OPCODE_REGISTER_C_INDEX: registers.BC.low = value
@@ -55,7 +55,7 @@ set_register_value_from_opcode_index :: proc(registers: ^Registers, opcode_index
    }
 }
 
-get_register_value_from_opcode_index :: proc(registers: Registers, opcode_index: u8) -> u8 {
+get_register_value_from_opcode_index :: #force_inline proc(registers: Registers, opcode_index: u8) -> u8 {
     switch opcode_index {
         case OPCODE_REGISTER_B_INDEX: return registers.BC.high
         case OPCODE_REGISTER_C_INDEX: return registers.BC.low
@@ -70,7 +70,7 @@ get_register_value_from_opcode_index :: proc(registers: Registers, opcode_index:
    }
 }
 
-get_register_pair_value_from_opcode_index :: proc(registers: Registers, register_pair_index: u8) -> u16 {
+get_register_pair_value_from_opcode_index :: #force_inline proc(registers: Registers, register_pair_index: u8) -> u16 {
     switch register_pair_index {
         case OPCODE_REGISTER_PAIR_BC_INDEX: return u16(registers.BC)
         case OPCODE_REGISTER_PAIR_DE_INDEX: return u16(registers.DE)
@@ -82,7 +82,7 @@ get_register_pair_value_from_opcode_index :: proc(registers: Registers, register
    }
 }
 
-set_register_pair_value_from_opcode_index :: proc(registers: ^Registers, register_pair_index: u8, value: u16) {
+set_register_pair_value_from_opcode_index :: #force_inline proc(registers: ^Registers, register_pair_index: u8, value: u16) {
     switch register_pair_index {
         case OPCODE_REGISTER_PAIR_BC_INDEX: registers.BC = Register(value)
         case OPCODE_REGISTER_PAIR_DE_INDEX: registers.DE = Register(value)
@@ -95,7 +95,7 @@ set_register_pair_value_from_opcode_index :: proc(registers: ^Registers, registe
 }
 
 // Flags
-set_zero_flag :: proc(registers: ^Registers, is_set: bool) {
+set_zero_flag :: #force_inline proc(registers: ^Registers, is_set: bool) {
     if is_set {
         registers.AF.low = 0b10_00_0000 | registers.AF.low 
     } else {
@@ -103,7 +103,7 @@ set_zero_flag :: proc(registers: ^Registers, is_set: bool) {
     }
 }
 
-set_half_carry_flag :: proc(registers: ^Registers, is_set: bool) {
+set_half_carry_flag :: #force_inline proc(registers: ^Registers, is_set: bool) {
     if is_set {
         registers.AF.low = 0b00_10_0000 | registers.AF.low 
     } else {
@@ -111,7 +111,7 @@ set_half_carry_flag :: proc(registers: ^Registers, is_set: bool) {
     }
 }
 
-set_carry_flag :: proc(registers: ^Registers, is_set: bool) {
+set_carry_flag :: #force_inline proc(registers: ^Registers, is_set: bool) {
     if is_set {
         registers.AF.low = 0b00_01_0000 | registers.AF.low
     } else {
@@ -119,7 +119,7 @@ set_carry_flag :: proc(registers: ^Registers, is_set: bool) {
     }
 }
 
-set_n_flag :: proc(registers: ^Registers, is_set: bool) {
+set_n_flag :: #force_inline proc(registers: ^Registers, is_set: bool) {
     if is_set {
         registers.AF.low = 0b01_00_0000 | registers.AF.low
     } else {
@@ -129,7 +129,7 @@ set_n_flag :: proc(registers: ^Registers, is_set: bool) {
 
 // Excellent overview on how the half carry flag works: https://gist.github.com/meganesu/9e228b6b587decc783aa9be34ae27841
 
-compute_half_carry_flag_by_8_bit_addition :: proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
+compute_half_carry_flag_by_8_bit_addition :: #force_inline proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
     // Isolate the right nibble of each byte.
     masked_left: byte = a & 0xF
     masked_right: byte = b & 0xF
@@ -137,7 +137,7 @@ compute_half_carry_flag_by_8_bit_addition :: proc(registers: Registers, a, b: by
     return masked_left + masked_right + carry > 0xF
 }
 
-compute_half_carry_flag_by_16_bit_addition :: proc(registers: Registers, a, b: u16) -> bool {
+compute_half_carry_flag_by_16_bit_addition :: #force_inline proc(registers: Registers, a, b: u16) -> bool {
     // Isolate the right nibble of each byte.
     masked_left: u16 = a & 0xFFF
     masked_right: u16 = b & 0xFFF
@@ -145,7 +145,7 @@ compute_half_carry_flag_by_16_bit_addition :: proc(registers: Registers, a, b: u
     return ((masked_left + masked_right) & 0x1000) == 0x1000
 }
 
-compute_half_carry_flag_by_8_bit_subtraction :: proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
+compute_half_carry_flag_by_8_bit_subtraction :: #force_inline proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
     // Isolate the right nibble of each byte.
     masked_left: byte = a & 0xF
     masked_right: byte = b & 0xF
@@ -153,33 +153,33 @@ compute_half_carry_flag_by_8_bit_subtraction :: proc(registers: Registers, a, b:
     return masked_left - masked_right - carry > 0xF
 }
 
-compute_carry_flag_by_8_bit_addition :: proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
+compute_carry_flag_by_8_bit_addition :: #force_inline proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
     // We just need to check if the sum overflowed.
     return int(a) + int(b) + int(carry) > 0xFF
 }
 
-compute_carry_flag_by_16_bit_addition :: proc(registers: Registers, a, b: u16) -> bool {
+compute_carry_flag_by_16_bit_addition :: #force_inline proc(registers: Registers, a, b: u16) -> bool {
     // We just need to check if the sum overflowed.
     return int(a) + int(b) > 0xFFFF
 }
 
-compute_carry_flag_by_8_bit_subtraction :: proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
+compute_carry_flag_by_8_bit_subtraction :: #force_inline proc(registers: Registers, a, b: byte, carry: byte = 0) -> bool {
     // We just need to check if the sum underflowed.
     return int(a) - int(b) - int(carry) < 0
 }
 
-is_zero_flag_set :: proc(registers: Registers) -> bool {
+is_zero_flag_set :: #force_inline proc(registers: Registers) -> bool {
     return (registers.AF.low & 0b10_00_0000) == 0b10_00_0000
 }
 
-is_n_flag_set :: proc(registers: Registers) -> bool {
+is_n_flag_set :: #force_inline proc(registers: Registers) -> bool {
     return (registers.AF.low & 0b01_00_0000) == 0b01_00_0000
 }
 
-is_half_carry_flag_set :: proc(registers: Registers) -> bool {
+is_half_carry_flag_set :: #force_inline proc(registers: Registers) -> bool {
     return (registers.AF.low & 0b00_10_0000) == 0b00_10_0000
 }
 
-is_carry_flag_set :: proc(registers: Registers) -> bool {
+is_carry_flag_set :: #force_inline proc(registers: Registers) -> bool {
     return (registers.AF.low & 0b00_01_0000) == 0b00_01_0000
 }

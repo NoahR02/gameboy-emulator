@@ -25,16 +25,16 @@ extract_condition :: proc(opcode: u8) -> Condition_Code {
     return Condition_Code(dst_register)
 }
 
-cpu_jp_to_hl :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_jp_to_hl :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     cpu.registers.PC = cpu.registers.HL
 }
 
-cpu_jp_to_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_jp_to_address :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     address := opcode_data
     cpu.registers.PC = Register(address)
 }
 
-cpu_jp_to_address_conditionally :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_jp_to_address_conditionally :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     condition := extract_condition(opcode)
     address := opcode_data
 
@@ -43,12 +43,12 @@ cpu_jp_to_address_conditionally :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)
     }
 }
 
-cpu_jp_to_address_at_hl :: proc(cpu: ^Cpu)  {
+cpu_jp_to_address_at_hl :: #force_inline proc(cpu: ^Cpu)  {
     cpu.registers.PC = cpu.registers.HL
 }
 
 // Jump relative to the current program counter address.
-cpu_jr_to_relative_u8_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_jr_to_relative_u8_address :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     n := i8(opcode_data)
 
     address := i32(cpu.registers.PC) + i32(i8(n))
@@ -57,7 +57,7 @@ cpu_jr_to_relative_u8_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 
 
 // Jump relative to the current program counter address if a condition is true.
-cpu_jr_to_relative_u8_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_jr_to_relative_u8_address_on_condition :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     condition := extract_condition(opcode)
     n := i8(opcode_data)
 
@@ -68,7 +68,7 @@ cpu_jr_to_relative_u8_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode
 }
 
 
-cpu_call_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_call_address :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     bus_write(cpu.bus, u16(cpu.registers.SP) - 1, cpu.registers.PC.high)
     bus_write(cpu.bus, u16(cpu.registers.SP) - 2, cpu.registers.PC.low)
     cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
@@ -77,7 +77,7 @@ cpu_call_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
 }
 
 
-cpu_call_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_call_address_on_condition :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     condition := extract_condition(opcode)
 
     if is_condition_true(cpu.registers, condition) {
@@ -89,13 +89,13 @@ cpu_call_address_on_condition :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  
     }
 }
 
-cpu_ret :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_ret :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     cpu.registers.PC.low = bus_read(cpu.bus^, u16(cpu.registers.SP))
     cpu.registers.PC.high = bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
     cpu.registers.SP = Register(u16(cpu.registers.SP) + 2)
 }
 
-cpu_reti :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_reti :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     cpu.registers.PC.low = bus_read(cpu.bus^, u16(cpu.registers.SP))
     cpu.registers.PC.high = bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
     cpu.registers.SP = Register(u16(cpu.registers.SP) + 2)
@@ -103,7 +103,7 @@ cpu_reti :: proc(cpu: ^Cpu, opcode: u8)  {
 }
 
 
-cpu_ret_on_condition :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_ret_on_condition :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     condition := extract_condition(opcode)
     if is_condition_true(cpu.registers, condition) {
         cpu.registers.PC.low = bus_read(cpu.bus^, u16(cpu.registers.SP))
@@ -112,7 +112,7 @@ cpu_ret_on_condition :: proc(cpu: ^Cpu, opcode: u8)  {
     }
 }
 
-cpu_rst :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_rst :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     // Map t to 1 of 8 addresses
     t := extract_bits_5_4_3(opcode)
     P := t * 8

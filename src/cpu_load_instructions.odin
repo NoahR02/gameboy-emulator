@@ -1,7 +1,7 @@
 package gameboy
 
 // 8-bit Load/Store/Move START
-cpu_ld_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_ld_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register(opcode)
     src := extract_src_register(opcode)
 
@@ -14,7 +14,7 @@ cpu_ld_8_bit :: proc(cpu: ^Cpu, opcode: u8)  {
     }
 }
 
-cpu_ld_immediate_into_register_8_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_ld_immediate_into_register_8_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     dst := extract_dst_register(opcode)
     immediate := opcode_data
 
@@ -26,7 +26,7 @@ cpu_ld_immediate_into_register_8_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data:
     }
 }
 
-cpu_ld_a_with_value_or_store_at_register_pair_address :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_ld_a_with_value_or_store_at_register_pair_address :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     // These instructions are a bit odd because they have to support HLI + HLD.
     //  We will always use A as the src or dest here.
 
@@ -75,34 +75,34 @@ cpu_ld_a_with_value_or_store_at_register_pair_address :: proc(cpu: ^Cpu, opcode:
     }
 }
 
-cpu_ld_a_at_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_ld_a_at_address :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     bus_write(cpu.bus, opcode_data, cpu.registers.AF.high)
 }
 
-cpu_ld_data_at_address_to_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_ld_data_at_address_to_a :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
      cpu.registers.AF.high = bus_read(cpu.bus^, opcode_data)
 }
 
 // ldh = Load from high page
-cpu_ldh_plus_c_register_from_a :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_ldh_plus_c_register_from_a :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     address := u16(0xFF00) + u16(cpu.registers.BC.low)
     bus_write(cpu.bus, address, cpu.registers.AF.high)
 }
 
-cpu_ldh_plus_c_register_to_a :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_ldh_plus_c_register_to_a :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     address := u16(0xFF00) + u16(cpu.registers.BC.low)
     cpu.registers.AF.high = bus_read(cpu.bus^, address)
 }
 
 // ldh = Load from high page
-cpu_ldh_from_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_ldh_from_a :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     address := u16(0xFF00) + u16(opcode_data)
     bus_write(cpu.bus, address, cpu.registers.AF.high)
 }
 
 
 // ldh = Load from high page
-cpu_ldh_to_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
+cpu_ldh_to_a :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
     address := u16(0xFF00) + u16(opcode_data)
     cpu.registers.AF.high = bus_read(cpu.bus^, address)
 }
@@ -111,16 +111,16 @@ cpu_ldh_to_a :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)  {
 
 // 16-bit Load/Store/Move START
 
-cpu_ld_hl_into_sp :: proc(cpu: ^Cpu, opcode: u8) {
+cpu_ld_hl_into_sp :: #force_inline proc(cpu: ^Cpu, opcode: u8) {
     cpu.registers.SP = cpu.registers.HL
 }
 
-cpu_ld_sp_at_address :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_ld_sp_at_address :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     bus_write(cpu.bus, opcode_data, cpu.registers.SP.low)
     bus_write(cpu.bus, opcode_data + 1, cpu.registers.SP.high)
 }
 
-cpu_ld_immediate_into_register_pair_16_bit :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
+cpu_ld_immediate_into_register_pair_16_bit :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u16)  {
     dst := extract_dst_register_pair(opcode)
     set_register_pair_value_from_opcode_index(
         &cpu.registers,
@@ -129,7 +129,7 @@ cpu_ld_immediate_into_register_pair_16_bit :: proc(cpu: ^Cpu, opcode: u8, opcode
     )
 }
 
-cpu_ld_sp_plus_immediate_into_hl :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8) {
+cpu_ld_sp_plus_immediate_into_hl :: #force_inline proc(cpu: ^Cpu, opcode: u8, opcode_data: u8) {
     set_zero_flag(&cpu.registers, false)
     set_n_flag(&cpu.registers, false)
     set_half_carry_flag(&cpu.registers, compute_half_carry_flag_by_8_bit_addition(cpu.registers, cpu.registers.SP.low, opcode_data))
@@ -138,7 +138,7 @@ cpu_ld_sp_plus_immediate_into_hl :: proc(cpu: ^Cpu, opcode: u8, opcode_data: u8)
     cpu.registers.HL = Register(u16(cpu.registers.SP) + u16(i8(opcode_data)))
 }
 
-cpu_push :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_push :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register_pair(opcode)
     low: u8 = 0
     high: u8 = 0
@@ -159,7 +159,7 @@ cpu_push :: proc(cpu: ^Cpu, opcode: u8)  {
     cpu.registers.SP = Register(u16(cpu.registers.SP) - 2)
 }
 
-cpu_pop :: proc(cpu: ^Cpu, opcode: u8)  {
+cpu_pop :: #force_inline proc(cpu: ^Cpu, opcode: u8)  {
     dst := extract_dst_register_pair(opcode)
     low_sp := bus_read(cpu.bus^, u16(cpu.registers.SP))
     high_sp := bus_read(cpu.bus^, u16(cpu.registers.SP) + 1)
