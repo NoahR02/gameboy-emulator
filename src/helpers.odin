@@ -6,6 +6,7 @@ import "core:log"
 import "core:strings"
 
 KILOBYTE :: 1024
+TILE_SIZE :: 8
 
 format_16_bit_number :: #force_inline proc(address: []byte, allocator := context.temp_allocator) -> string {
     return fmt.aprintf("#%02x%02x", address[1], address[0], allocator = allocator)

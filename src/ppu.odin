@@ -52,6 +52,8 @@ Ppu :: struct {
     // Tile Map 2 $9C00-$9FFF
     background_tile_map_2: Layer,
     oam_map: Layer,
+    
+    screen: Layer,
 }
 
 ppu_make :: proc() -> (self: Ppu) {
@@ -60,10 +62,12 @@ ppu_make :: proc() -> (self: Ppu) {
     background_tile_map_1 := layer_make(256, 256, 32)
     background_tile_map_2 := layer_make(256, 256, 32)
     oam_map := layer_make(64, 64, 8)
+    screen := layer_make(GAMEBOY_SCREEN_WIDTH, GAMEBOY_SCREEN_HEIGHT, GAMEBOY_SCREEN_WIDTH / 8)
     self.tiles = tiles
     self.background_tile_map_1 = background_tile_map_1
     self.background_tile_map_2 = background_tile_map_2
     self.oam_map = oam_map
+    self.screen = screen
     return
 }
 
@@ -72,6 +76,7 @@ ppu_destroy :: proc(self: ^Ppu) {
     layer_delete(&self.background_tile_map_1)
     layer_delete(&self.background_tile_map_2)
     layer_delete(&self.oam_map)
+    layer_delete(&self.screen)
 }
 
 ppu_step :: proc(self: ^Ppu) {
@@ -120,23 +125,51 @@ ppu_step :: proc(self: ^Ppu) {
             bus_write(bus, LY, ly)
         }
 
-        if ly == 144 {
+        if ly > 144 {
             // Enter mode 1. V-Blank
             interrupts_flag += {.LCD, .VBlank}
             lcd_status.mode = .V_Blank
             lcd_status.v_blank_interrupt = true
             lcd_status.h_blank_interrupt = false
             lcd_status.oam_interrupt = false
+
+            // 10 extra scan lines
+            self.cycles += 456 * 10 / 4
         } else if ly < 144 {
-            // Set mode 2. Searching objects.
+            // Set mode 2. OAM Scan, searching for objects.
             interrupts_flag += {.LCD}
             lcd_status.mode = .Searching_Oam
             lcd_status.oam_interrupt = true
             lcd_status.v_blank_interrupt = false
             lcd_status.h_blank_interrupt = false
-
-
             
+            // Blit the current line onto our screen buffer.
+            // [x] Background Layer
+            // [ ] Screen Layer
+            // [ ] Sprite Layer
+
+            tile_framebuffer_row := u32(uint(ly) / TILE_SIZE)
+            for x in 0..<GAMEBOY_SCREEN_WIDTH {
+                tile_framebuffer_column := u32(x / TILE_SIZE)
+
+                bg_tile_map_address := (32 * tile_framebuffer_row) + tile_framebuffer_column
+                tile_map_index := bus_read(self.bus^, u16(0x9800 + bg_tile_map_address))
+                tile_data := ppu_get_tile_data(self, u8(u32(tile_map_index)), .Default_Behavior)
+
+                tile_framebuffer_xy := uint((uint(ly) * GAMEBOY_SCREEN_WIDTH) + uint(x)) * 4
+
+                tile_y := ly % TILE_SIZE
+                tile_x := x % TILE_SIZE
+                tile_xy: uint = (TILE_SIZE * uint(tile_y) + uint(tile_x)) * 4
+        
+                self.screen.data[tile_framebuffer_xy] = tile_data[tile_xy]
+                self.screen.data[tile_framebuffer_xy + 1] = tile_data[tile_xy + 1]
+                self.screen.data[tile_framebuffer_xy + 2] = tile_data[tile_xy + 2]
+                self.screen.data[tile_framebuffer_xy + 3] = tile_data[tile_xy + 3]
+            }
+
+            // 80 T-cycles
+            self.cycles += 80 / 4
         }
     } else if self.cycles >= 369 * 4 {
         // Enter mode 0. HBlank.
@@ -145,12 +178,19 @@ ppu_step :: proc(self: ^Ppu) {
         lcd_status.h_blank_interrupt = true
         lcd_status.v_blank_interrupt = false
         lcd_status.oam_interrupt = false
+
+        // 87 - 204 T cycles
+        self.cycles += 204 / 4
     } else if self.cycles >= 80 * 4 {
+        
         // Enter mode 3. Drawing.
         lcd_status.mode = .Data_Transfer_To_Lcd
         lcd_status.oam_interrupt = false
         lcd_status.v_blank_interrupt = false
         lcd_status.h_blank_interrupt = false
+
+        // 172 - 289 T cycles
+        self.cycles += 289 / 4
     }
 
     if byte(ly) == bus_read(bus^, LYC) {

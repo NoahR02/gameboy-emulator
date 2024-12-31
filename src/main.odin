@@ -187,9 +187,11 @@ main :: proc() {
         ppu_fill_oam_map(&gb_state.ppu)
 
         imgui_preprare_frame()
- 
+
         im.Begin("Game", &p_open_default)
+        layer_fill_texture(&gb_state.ppu.screen)
         layer_fill_texture(&gb_state.ppu.background_tile_map_1)
+        im.Image(rawptr(uintptr(gb_state.ppu.screen.texture.handle)), im.Vec2{f32(gb_state.ppu.screen.width * 2), f32(gb_state.ppu.screen.height * 2)})
         im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_1.width) * 2, f32(gb_state.ppu.background_tile_map_1.height) * 2})
         im.End()
  
