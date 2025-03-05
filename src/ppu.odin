@@ -13,6 +13,24 @@ GB_LIGHT_GRAY :: Pixel_Color {200, 200, 200, 255}
 GB_DARK_GRAY :: Pixel_Color {80, 80, 80, 255}
 GB_BLACK :: Pixel_Color {0, 0, 0, 255}
 
+// GB_WHITE :: Pixel_Color {232, 252, 204, 255}
+// GB_LIGHT_GRAY :: Pixel_Color {172, 212, 144, 255}
+// GB_DARK_GRAY :: Pixel_Color {84, 140, 112, 255}
+// GB_BLACK :: Pixel_Color {20, 44, 56, 255}
+
+//GB_WHITE :: Pixel_Color {232, 232, 232, 255}
+//GB_LIGHT_GRAY :: Pixel_Color {160, 160, 160, 255}
+//GB_DARK_GRAY :: Pixel_Color {88, 88, 88, 255}
+//GB_BLACK :: Pixel_Color {16, 16, 16, 255}
+
+
+Color_Ids :: bit_field u8 {
+    id_0: u8 | 2,
+    id_1: u8 | 2,
+    id_2: u8 | 2,
+    id_3: u8 | 2,
+}
+
 Pixel_Color_Map := [4]Pixel_Color { GB_WHITE, GB_LIGHT_GRAY, GB_DARK_GRAY, GB_BLACK }
 
 Layer :: struct {
@@ -146,10 +164,11 @@ ppu_step :: proc(self: ^Ppu) {
             // Blit the current line onto our screen buffer.
             // [x] Background Layer
             // [ ] Screen Layer
-            // [ ] Sprite Layer
+            // [ ] Sprite
 
             tile_framebuffer_row := u32(uint(ly) / TILE_SIZE)
             for x in 0..<GAMEBOY_SCREEN_WIDTH {
+                x := u8(x)
                 tile_framebuffer_column := u32(x / TILE_SIZE)
 
                 bg_tile_map_address := (32 * tile_framebuffer_row) + tile_framebuffer_column
@@ -162,10 +181,108 @@ ppu_step :: proc(self: ^Ppu) {
                 tile_x := x % TILE_SIZE
                 tile_xy: uint = (TILE_SIZE * uint(tile_y) + uint(tile_x)) * 4
         
-                self.screen.data[tile_framebuffer_xy] = tile_data[tile_xy]
-                self.screen.data[tile_framebuffer_xy + 1] = tile_data[tile_xy + 1]
-                self.screen.data[tile_framebuffer_xy + 2] = tile_data[tile_xy + 2]
-                self.screen.data[tile_framebuffer_xy + 3] = tile_data[tile_xy + 3]
+                bg_color_ids := Color_Ids(bus_read(bus^, 0xFF47))
+                bg_color_ids_arr := [4]u8 {
+                    bg_color_ids.id_0,
+                    bg_color_ids.id_1,
+                    bg_color_ids.id_2,
+                    bg_color_ids.id_3,
+                }
+
+                background_color := Pixel_Color {
+                    tile_data[tile_xy],
+                    tile_data[tile_xy + 1],
+                    tile_data[tile_xy + 2],
+                    tile_data[tile_xy + 3]
+                }
+                self.screen.data[tile_framebuffer_xy] = background_color[0]
+                self.screen.data[tile_framebuffer_xy + 1] = background_color[1]
+                self.screen.data[tile_framebuffer_xy + 2] = background_color[2]
+                self.screen.data[tile_framebuffer_xy + 3] = background_color[3]
+
+                
+                Sprite_Attribute_Flag :: bit_field u8 {
+                    _gbc: u16 | 4,
+                    dmg_palette: u8 | 1,
+                    x_flip : bool | 1,
+                    y_flip: bool | 1,
+                    priority: u8 | 1,
+                }
+
+                for sprite_index := 0; sprite_index < 160; sprite_index += 4 {
+                    sy := bus_read(self.bus^, u16(0xFE00 + sprite_index)) - 16
+                    sx := bus_read(self.bus^, u16(0xFE00 + sprite_index + 1)) - 8
+
+                    sprite_tile_index := bus_read(self.bus^, u16(0xFE00 + sprite_index + 2))
+                    sprite_flags := Sprite_Attribute_Flag(bus_read(self.bus^, u16(0xFE00 + sprite_index + 3)))
+                    sw: u8 = TILE_SIZE
+                    sh: u8 = TILE_SIZE
+
+                    is_in_x := x >= sx && x <= sx + sw
+                    is_in_y := u8(ly) >= sy && ly <= sy + sh
+                    in_bounds := is_in_x && is_in_y
+
+                    if in_bounds {
+
+                        palette: Palette
+                        if sprite_flags.dmg_palette == 0 {
+                            palette = .Obp0
+                        } else {
+                            palette = .Obp1
+                        }
+
+                        // Sprites always use the 8000 method.
+                        sprite_tile_data := ppu_get_tile_data(self, u8(u32(sprite_tile_index)), ._8000_Only, palette)
+
+                        local_sx: u8 = (x - sx) % TILE_SIZE
+                        local_sy: u8 = abs(ly - sy) % TILE_SIZE
+                        local_sx_xy := ((TILE_SIZE * uint(local_sy)) + uint(local_sx)) * 4
+
+                        sprite_color := Pixel_Color {
+                            sprite_tile_data[local_sx_xy],
+                            sprite_tile_data[local_sx_xy + 1],
+                            sprite_tile_data[local_sx_xy + 2],
+                            sprite_tile_data[local_sx_xy + 3]
+                        }
+
+                        color_address: u16 = 0
+                        switch palette {
+                            case .Bgp: color_address = 0xFF47
+                            case .Obp0: color_address = 0xFF48
+                            case .Obp1: color_address = 0xFF49
+                        }
+
+                        color_ids := Color_Ids(bus_read(bus^, color_address))
+                        color_ids_arr := [4]u8 {
+                            color_ids.id_0,
+                            color_ids.id_1,
+                            color_ids.id_2,
+                            color_ids.id_3,
+                        }
+                        
+                        //self.screen.data[tile_framebuffer_xy] = sprite_color[0]
+                        //self.screen.data[tile_framebuffer_xy + 1] = sprite_color[1]
+                        //self.screen.data[tile_framebuffer_xy + 2] = sprite_color[2]
+                        //self.screen.data[tile_framebuffer_xy + 3] = sprite_color[3]
+
+                         if sprite_color == Pixel_Color_Map[color_ids.id_0] {
+                        } else if (sprite_flags.priority == 0) {
+                            self.screen.data[tile_framebuffer_xy] = sprite_color[0]
+                            self.screen.data[tile_framebuffer_xy + 1] = sprite_color[1]
+                            self.screen.data[tile_framebuffer_xy + 2] = sprite_color[2]
+                            self.screen.data[tile_framebuffer_xy + 3] = sprite_color[3]
+                        }
+                         else {
+                            self.screen.data[tile_framebuffer_xy] = sprite_color[0]
+                            self.screen.data[tile_framebuffer_xy + 1] = sprite_color[1]
+                            self.screen.data[tile_framebuffer_xy + 2] = sprite_color[2]
+                            self.screen.data[tile_framebuffer_xy + 3] = sprite_color[3]
+                        }
+                        
+                    }
+
+
+                }
             }
 
             // 80 T-cycles
@@ -210,7 +327,13 @@ Tile_Fetch_Mode :: enum {
     _8800_Only,
 }
 
-ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: Tile_Fetch_Mode = .Default_Behavior) -> (tile_data: [8 * 8 * 4]u8) {
+Palette :: enum {
+    Bgp,
+    Obp0,
+    Obp1,
+}
+
+ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: Tile_Fetch_Mode = .Default_Behavior, palette: Palette = .Bgp) -> (tile_data: [8 * 8 * 4]u8) {
     bus := self.bus
     tile_row: u16 = 0
 
@@ -234,6 +357,21 @@ ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: 
         }
     }
 
+    color_address: u16 = 0
+    switch palette {
+        case .Bgp: color_address = 0xFF47
+        case .Obp0: color_address = 0xFF48
+        case .Obp1: color_address = 0xFF49
+    }
+
+    color_ids := Color_Ids(bus_read(bus^, color_address))
+    color_ids_arr := [4]u8 {
+        color_ids.id_0,
+        color_ids.id_1,
+        color_ids.id_2,
+        color_ids.id_3,
+    }
+
     for row: u16 = row_start; row < row_start + 16; row += 2 {
 
         // Get the row pixels.
@@ -247,7 +385,7 @@ ppu_get_tile_data :: proc(self: ^Ppu, tile_number: u8, force_tile_fetch_method: 
             bit_1 := (byte_1 & mask) >> u8(bit_pos)
             bit_2 := (byte_2 & mask) >> u8(bit_pos)
             pixel_val := (bit_2 << 1) | (bit_1)
-            pixel_color := Pixel_Color_Map[pixel_val]
+            pixel_color := Pixel_Color_Map[color_ids_arr[pixel_val]]
 
             // Set the pixel color in our framebuffer.
             pixel_x: u16 = u16(7-bit_pos)

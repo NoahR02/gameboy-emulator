@@ -70,21 +70,17 @@ gameboy_step :: #force_inline proc(gb_state: ^Gb_State, window: ^Window) {
     action_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
     dpad_buttons_enabled := (p1_joypad & 0b00_01_0000) == 0
 
-    directional_keys_to_glfw_key := map[Directional_Buttons] i32 {
-        .Up = glfw.KEY_W,
-        .Left = glfw.KEY_A,
-        .Down = glfw.KEY_S,
-        .Right = glfw.KEY_D
-    }
-    defer delete(directional_keys_to_glfw_key)
+    directional_keys_to_glfw_key := make(map[Directional_Buttons] i32, context.temp_allocator)
+    directional_keys_to_glfw_key[.Up] = glfw.KEY_W
+    directional_keys_to_glfw_key[.Left] = glfw.KEY_A
+    directional_keys_to_glfw_key[.Down] = glfw.KEY_S
+    directional_keys_to_glfw_key[.Right] = glfw.KEY_D
 
-    action_keys_to_glfw_key := map[Action_Buttons] i32 {
-        .Start = glfw.KEY_ENTER,
-        .Select = glfw.KEY_LEFT_SHIFT,
-        .A = glfw.KEY_Z,
-        .B = glfw.KEY_K
-    }
-    defer delete(action_keys_to_glfw_key)
+    action_keys_to_glfw_key := make(map[Action_Buttons] i32, context.temp_allocator)
+    action_keys_to_glfw_key[.Start] = glfw.KEY_ENTER
+    action_keys_to_glfw_key[.Select] = glfw.KEY_LEFT_SHIFT
+    action_keys_to_glfw_key[.A] = glfw.KEY_Z
+    action_keys_to_glfw_key[.B] = glfw.KEY_K
 
     for directional_key in directional_keys_to_glfw_key {
         directional_key_state := key_states[directional_keys_to_glfw_key[directional_key]]
@@ -152,7 +148,6 @@ main :: proc() {
     
     glfw.SetKeyCallback(window.handle, proc "c" (gb_state: glfw.WindowHandle, key, scancode, action, mods: i32) {
         // context = runtime.default_context()
-        // fmt.println("...")
         key_states[key] = action
     })
 
@@ -190,9 +185,7 @@ main :: proc() {
 
         im.Begin("Game", &p_open_default)
         layer_fill_texture(&gb_state.ppu.screen)
-        layer_fill_texture(&gb_state.ppu.background_tile_map_1)
-        im.Image(rawptr(uintptr(gb_state.ppu.screen.texture.handle)), im.Vec2{f32(gb_state.ppu.screen.width * 2), f32(gb_state.ppu.screen.height * 2)})
-        im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_1.width) * 2, f32(gb_state.ppu.background_tile_map_1.height) * 2})
+        im.Image(rawptr(uintptr(gb_state.ppu.screen.texture.handle)), im.Vec2{f32(gb_state.ppu.screen.width * 4), f32(gb_state.ppu.screen.height * 4)})
         im.End()
  
         im.BeginTabBar(cstring("Debug Tab Container"))
@@ -203,6 +196,7 @@ main :: proc() {
         }
  
         if im.BeginTabItem("Background Layer", &p_open_default) {
+            layer_fill_texture(&gb_state.ppu.background_tile_map_1)
             layer_fill_texture(&gb_state.ppu.background_tile_map_2)
             im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_1.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_1.width) * 2, f32(gb_state.ppu.background_tile_map_1.height) * 2})
             im.Image(rawptr(uintptr(gb_state.ppu.background_tile_map_2.texture.handle)), im.Vec2{f32(gb_state.ppu.background_tile_map_2.width) * 2, f32(gb_state.ppu.background_tile_map_2.height) * 2})
