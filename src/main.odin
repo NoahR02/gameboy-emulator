@@ -2,6 +2,7 @@ package gameboy
 
 import "core:fmt"
 import "core:strings"
+import "core:strconv"
 import "core:encoding/endian"
 
 Gb_State :: struct {
@@ -141,6 +142,7 @@ main :: proc() {
     bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer, &gb_state.io)
 
     rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
+    // rom, rom_open_success := os.read_entire_file_from_filename("assets/Pokemon_Yellow_Version.gb")
     // rom, rom_open_success := os.read_entire_file_from_filename("assets/Tetris.gb")
     if !rom_open_success {
         panic("Failed to open the rom file!")
@@ -166,6 +168,7 @@ main :: proc() {
        now := glfw.GetTime()
        delta := now - last_time
        last_time = now
+       fps := f32(1.0 / delta)
        timer += delta
 
        window_poll_for_events()
@@ -188,6 +191,14 @@ main :: proc() {
         im.Image(rawptr(uintptr(gb_state.ppu.screen.texture.handle)), im.Vec2{f32(gb_state.ppu.screen.width * 4), f32(gb_state.ppu.screen.height * 4)})
         im.End()
  
+        im.Begin("Debug", &p_open_default)
+
+        sb_builder := strings.builder_make(allocator = context.temp_allocator)
+        strings.write_f32(&sb_builder, fps, 'f')
+        strings.write_string(&sb_builder, " FPS")
+        fps_cstring, _ := strings.to_cstring(&sb_builder)
+
+        im.Text(fps_cstring)
         im.BeginTabBar(cstring("Debug Tab Container"))
         if im.BeginTabItem("Tile Map", &p_open_default) {
             layer_fill_texture(&gb_state.ppu.tiles)
@@ -209,6 +220,7 @@ main :: proc() {
             im.EndTabItem()
         }
         im.EndTabBar()
+        im.End()
  
         imgui_assemble_and_render_frame(window)
         window_swap_buffers(window)
