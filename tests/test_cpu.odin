@@ -38,7 +38,7 @@ test_cpu :: proc(t: ^testing.T) {
     for test in tests {
         gb_state := gb_state_make()
         defer gb_state_delete(&gb_state)
-        bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer)
+        bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer, &gb_state.io)
         
         rom, rom_read_success := os.read_entire_file(test)
         if !rom_read_success {
