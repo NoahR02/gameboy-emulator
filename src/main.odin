@@ -71,20 +71,22 @@ gameboy_step :: #force_inline proc(gb_state: ^Gb_State, window: ^Window) {
     action_buttons_enabled := (p1_joypad & 0b00_10_0000) == 0
     dpad_buttons_enabled := (p1_joypad & 0b00_01_0000) == 0
 
-    directional_keys_to_glfw_key := make(map[Directional_Buttons] i32, context.temp_allocator)
-    directional_keys_to_glfw_key[.Up] = glfw.KEY_W
-    directional_keys_to_glfw_key[.Left] = glfw.KEY_A
-    directional_keys_to_glfw_key[.Down] = glfw.KEY_S
-    directional_keys_to_glfw_key[.Right] = glfw.KEY_D
+    directional_keys_to_glfw_key: [Directional_Buttons] i32 = {
+        .Up = glfw.KEY_W,
+        .Left = glfw.KEY_A,
+        .Down = glfw.KEY_S,
+        .Right = glfw.KEY_D
+    }
 
-    action_keys_to_glfw_key := make(map[Action_Buttons] i32, context.temp_allocator)
-    action_keys_to_glfw_key[.Start] = glfw.KEY_ENTER
-    action_keys_to_glfw_key[.Select] = glfw.KEY_LEFT_SHIFT
-    action_keys_to_glfw_key[.A] = glfw.KEY_Z
-    action_keys_to_glfw_key[.B] = glfw.KEY_K
+    action_keys_to_glfw_key: [Action_Buttons] i32 = {
+        .Start = glfw.KEY_ENTER,
+        .Select = glfw.KEY_LEFT_SHIFT,
+        .A = glfw.KEY_Z,
+        .B = glfw.KEY_K,
+    }
 
-    for directional_key in directional_keys_to_glfw_key {
-        directional_key_state := key_states[directional_keys_to_glfw_key[directional_key]]
+    for direction in Directional_Buttons {
+        directional_key_state := key_states[directional_keys_to_glfw_key[direction]]
         
         if directional_key_state == glfw.PRESS || directional_key_state == glfw.REPEAT
         {
@@ -92,13 +94,13 @@ gameboy_step :: #force_inline proc(gb_state: ^Gb_State, window: ^Window) {
             interrupts_flag += {.Joypad}
             bus_write(&gb_state.bus, INTERRUPTS_FLAG, transmute(byte)interrupts_flag)
             
-            gb_state.io.direction_buttons += { directional_key } 
+            gb_state.io.direction_buttons += { direction } 
         } else if(directional_key_state == glfw.RELEASE) {
-            gb_state.io.direction_buttons -= { directional_key} 
+            gb_state.io.direction_buttons -= { direction} 
         }
     }
 
-    for action_key in action_keys_to_glfw_key {
+    for action_key in Action_Buttons {
         action_key_state := key_states[action_keys_to_glfw_key[action_key]]
 
         if action_key_state == glfw.PRESS || action_key_state == glfw.REPEAT
@@ -142,7 +144,7 @@ main :: proc() {
     bus_connect_devices(&gb_state.bus, &gb_state.cpu, &gb_state.ppu, &gb_state.timer, &gb_state.io)
 
     rom, rom_open_success := os.read_entire_file_from_filename("assets/Dr. Mario (World).gb")
-    // rom, rom_open_success := os.read_entire_file_from_filename("assets/Pokemon_Yellow_Version.gb")
+    //rom, rom_open_success := os.read_entire_file_from_filename("assets/Pokemon_Yellow_Version.gb")
     // rom, rom_open_success := os.read_entire_file_from_filename("assets/Tetris.gb")
     if !rom_open_success {
         panic("Failed to open the rom file!")
