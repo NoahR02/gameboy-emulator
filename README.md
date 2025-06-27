@@ -1,4 +1,4 @@
-# odin-gameboy
+# gameboy
 
 - [x] CPU
   - [x] Successfully passes all of Blargg's CPU tests
