@@ -1,4 +1,4 @@
-# gameboy
+# GameBoy Emulator
 
 - [x] CPU
   - [x] Successfully passes all of Blargg's CPU tests
