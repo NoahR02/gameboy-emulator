@@ -7,7 +7,7 @@
 debug.log
 
 # Binaries
-/bin
+/target
 *.bin
 *.exe
 

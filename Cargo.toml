@@ -1,0 +1,60 @@
+[package]
+name = "gameboy-emulator"
+version = "0.1.0"
+edition = "2024"
+
+[profile.dev]
+# opt-level = 3
+# debug-assertions = false
+# overflow-checks = false
+# debug = 0
+# strip = "debuginfo"
+
+[dependencies]
+bitflags = "2.9.1"
+bit_field = "0.10.2"
+enumset = "1.1.6"
+cfg-if = "1.0.0"
+bytemuck = "1.23.0"
+glam = "0.30.4"
+
+[dependencies.craft]
+path = "../craft/crates/craft"
+default-features = false
+features = ["vello_renderer", "devtools", "accesskit", "sytem_fonts"]
+package = "craft_gui"
+
+[dependencies.wgpu]
+version = "24.0.3"
+default-features = false
+features = ["wgsl"]
+
+[target.'cfg(not(target_os = "android"))'.dependencies.winit]
+version = "0.30.11"
+features = []
+
+[target.'cfg(target_os = "android")'.dependencies.winit]
+version = "0.30.11"
+features = ["android-native-activity"]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+wasm-bindgen-futures = "0.4.50"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-sys]
+version = "0.3.77"
+default-features = false
+features = [
+    "Document",
+    "Window",
+    "Element",
+]
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.web-time]
+version = "1.1.0"
+default-features = false
+features = []
+
+[target.'cfg(target_arch = "wasm32")'.dependencies.wasm-bindgen]
+version = "0.2.100"
+default-features = false
+features = ["std", "msrv"]
