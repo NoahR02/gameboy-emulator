@@ -13,4 +13,5 @@ debug.log
 
 # Assets
 assets/*
+!assets/*.png
 !assets/.gitkeep

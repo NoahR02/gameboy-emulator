@@ -5,5 +5,9 @@
 - [x] Timer
 - [x] Interrupt Controller
 - [x] RAM
-- [ ] Basic GPU / PPU
+- [x] Basic GPU / PPU
 - [ ] Memory Bank Controllers
+
+![github-img1.png](assets/github-img1.png)
+
+![github-img2.png](assets/github-img2.png)

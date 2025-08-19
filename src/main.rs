@@ -1,10 +1,11 @@
 use craft::setup_craft;
 use craft::components::Component;
+use craft::geometry::Size;
 use gameboy_emulator::bus::bus::Bus;
 use gameboy_emulator::cpu::cpu::Cpu;
 use gameboy_emulator::cpu::registers::{Register, Registers};
 use gameboy_emulator::gui::custom_event_loop::GameboyEmulatorState;
-use gameboy_emulator::gui::gui_app::Counter;
+use gameboy_emulator::gui::gui_app::GameboyApp;
 use gameboy_emulator::ppu::ppu::Ppu;
 use gameboy_emulator::timer::timer::Timer;
 use gameboy_emulator::GameBoy;
@@ -13,9 +14,11 @@ use winit::event_loop::EventLoop;
 fn main() {
     use craft::CraftOptions;
 
-    let application = Counter::component();
+    let application = GameboyApp::component();
     let global_state = ();
-    let options = CraftOptions::basic("GameBoy Emulator");
+    let mut options = CraftOptions::basic("GameBoy Emulator");
+    let scale = 4.0;
+    options.window_size = Some(Size::new(160.0 * scale, 144.0 * scale));
 
 
     let mut game_boy = GameBoy {

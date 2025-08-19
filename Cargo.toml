@@ -19,10 +19,18 @@ bytemuck = "1.23.0"
 glam = "0.30.4"
 
 [dependencies.craft]
-path = "../craft/crates/craft"
+# path = "../craft/crates/craft"
+git = "https://github.com/craft-gui/craft"
+rev = "0546a2f9275cc0bd527e383c4cfd03a72b08c8f8"
 default-features = false
-features = ["vello_renderer", "devtools", "accesskit", "sytem_fonts"]
+features = ["vello_renderer", "devtools", "accesskit", "system_fonts"]
 package = "craft_gui"
+
+[dependencies.craft_renderer]
+git = "https://github.com/craft-gui/craft"
+rev = "0546a2f9275cc0bd527e383c4cfd03a72b08c8f8"
+default-features = false
+package = "craft_renderer"
 
 [dependencies.wgpu]
 version = "24.0.3"
